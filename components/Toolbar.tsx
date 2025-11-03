@@ -20,8 +20,8 @@ const ToolbarItem: React.FC<{
 };
 
 interface ToolbarProps {
-  onSetActiveTool: (tool: 'text' | 'image' | 'templates' | 'export') => void;
-  activeTool: 'text' | 'image' | 'templates' | 'export' | null;
+  onSetActiveTool: (tool: 'text' | 'image' | 'shapes' | 'templates' | 'export') => void;
+  activeTool: 'text' | 'image' | 'shapes' | 'templates' | 'export' | null;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ onSetActiveTool, activeTool }) => {
@@ -46,6 +46,12 @@ const Toolbar: React.FC<ToolbarProps> = ({ onSetActiveTool, activeTool }) => {
         icon="🖼️"
         label="Image"
         isActive={activeTool === 'image'}
+      />
+      <ToolbarItem
+        onClick={() => onSetActiveTool('shapes')}
+        icon="◇"
+        label="Shapes"
+        isActive={activeTool === 'shapes'}
       />
       <div className="w-full border-t border-gray-700 my-2"></div>
       <h2 className="text-lg font-bold text-gray-400">Content</h2>

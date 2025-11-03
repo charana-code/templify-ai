@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { CanvasElement, TextElement, ImageElement } from '../types';
+import { CanvasElement, TextElement, ImageElement, ShapeElement } from '../types';
 
 interface ContextualToolbarProps {
   selectedElementIds: string[];
@@ -50,8 +50,7 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     return <div className="h-[44px]"></div>;
   }
 
-  // FIX: Broaden the accepted key type to include keys from both TextElement and ImageElement, and return 'any' to accommodate various property types.
-  const getCommonPropertyValue = (key: keyof TextElement | keyof ImageElement): any => {
+  const getCommonPropertyValue = (key: keyof TextElement | keyof ImageElement | keyof ShapeElement): any => {
     if (selectedElements.length === 0) return undefined;
     const firstElement = selectedElements[0] as any;
     const firstValue = firstElement[key];
@@ -59,16 +58,23 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     return allSame ? firstValue : 'mixed';
   };
 
-  const handleUpdate = (key: keyof TextElement | keyof ImageElement, value: any) => {
+  const handleUpdate = (key: keyof TextElement | keyof ImageElement | keyof ShapeElement, value: any) => {
     let parsedValue = value;
-    if ((key === 'fontSize' || key === 'rotation' || key === 'lineHeight')) {
+    // FIX: Changed type of numberKeys to string[] to allow for keys specific to certain element types.
+    const numberKeys: string[] = ['fontSize', 'rotation', 'lineHeight', 'strokeWidth', 'sides', 'points', 'innerRadiusRatio'];
+    if (numberKeys.includes(key)) {
         if (typeof value === 'string' && value === '') {
             return; // Don't update if number input is cleared
         }
-        parsedValue = (key === 'lineHeight') ? parseFloat(value) : parseInt(value, 10);
+        parsedValue = (key === 'lineHeight' || key === 'innerRadiusRatio') ? parseFloat(value) : parseInt(value, 10);
         if (isNaN(parsedValue)) return;
     }
-    onUpdateElements({ [key]: parsedValue } as Partial<CanvasElement>);
+
+    if (key === 'strokeWidth' && selectedElements.every(el => (el as ShapeElement).shapeType === 'line')) {
+        onUpdateElements({ [key]: parsedValue, height: parsedValue } as Partial<CanvasElement>);
+    } else {
+        onUpdateElements({ [key]: parsedValue } as Partial<CanvasElement>);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,7 +222,6 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                 <button
                     onClick={() => handleUpdate('flipHorizontal', !commonFlipH)}
                     className={`px-3 py-1 text-sm rounded-l transition-colors ${commonFlipH ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'} ${commonFlipH === 'mixed' ? 'bg-gray-500' : ''}`}
-                    // FIX: Coerce 'any' type to boolean for aria-pressed to satisfy its type requirement (boolean | 'mixed' | 'true' | 'false').
                     aria-pressed={commonFlipH === 'mixed' ? 'mixed' : !!commonFlipH}
                     aria-label="Flip Horizontal"
                     title="Flip Horizontal"
@@ -226,7 +231,6 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                 <button
                     onClick={() => handleUpdate('flipVertical', !commonFlipV)}
                     className={`px-3 py-1 text-sm rounded-r transition-colors ${commonFlipV ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'} ${commonFlipV === 'mixed' ? 'bg-gray-500' : ''}`}
-                    // FIX: Coerce 'any' type to boolean for aria-pressed to satisfy its type requirement (boolean | 'mixed' | 'true' | 'false').
                     aria-pressed={commonFlipV === 'mixed' ? 'mixed' : !!commonFlipV}
                     aria-label="Flip Vertical"
                     title="Flip Vertical"
@@ -293,6 +297,81 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     );
   };
 
+  const renderShapeTools = () => {
+    if (selectionType !== 'shape') return null;
+
+    const commonFill = getCommonPropertyValue('fill');
+    const commonStroke = getCommonPropertyValue('stroke');
+    const commonStrokeWidth = getCommonPropertyValue('strokeWidth');
+
+    const singleSelectedShape = singleSelectedElement as ShapeElement | null;
+    const isLine = selectedElements.every(el => (el as ShapeElement).shapeType === 'line');
+
+    return (
+        <div className="flex items-center space-x-4 h-full animate-fade-in" role="toolbar" aria-label="Shape Formatting Toolbar">
+            {!isLine && (
+                <ToolWrapper>
+                    <ToolLabel htmlFor="fillColor">Fill</ToolLabel>
+                    <input id="fillColor" type="color"
+                        value={commonFill === 'mixed' ? '#ffffff' : commonFill}
+                        onChange={(e) => handleUpdate('fill', e.target.value)}
+                        className="bg-gray-700 rounded p-0.5 h-8 w-8 cursor-pointer border-2 border-transparent hover:border-blue-500"
+                        style={{ opacity: commonFill === 'mixed' ? 0.5 : 1 }}
+                        aria-label="Fill Color" />
+                </ToolWrapper>
+            )}
+
+            <ToolWrapper>
+                <ToolLabel htmlFor="strokeColor">Stroke</ToolLabel>
+                <input id="strokeColor" type="color"
+                    value={commonStroke === 'mixed' ? '#ffffff' : commonStroke}
+                    onChange={(e) => handleUpdate('stroke', e.target.value)}
+                    className="bg-gray-700 rounded p-0.5 h-8 w-8 cursor-pointer border-2 border-transparent hover:border-blue-500"
+                    style={{ opacity: commonStroke === 'mixed' ? 0.5 : 1 }}
+                    aria-label="Stroke Color" />
+            </ToolWrapper>
+
+            <ToolWrapper>
+                <ToolLabel htmlFor="strokeWidth">Width</ToolLabel>
+                <input id="strokeWidth" type="number" min="0"
+                    value={commonStrokeWidth === 'mixed' ? '' : commonStrokeWidth}
+                    placeholder={commonStrokeWidth === 'mixed' ? 'Mixed' : ''}
+                    onChange={(e) => handleUpdate('strokeWidth', e.target.value)}
+                    className="bg-gray-700 rounded p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </ToolWrapper>
+            
+            {singleSelectedShape?.shapeType === 'polygon' && (
+                <ToolWrapper>
+                    <ToolLabel htmlFor="sides">Sides</ToolLabel>
+                    <input id="sides" type="number" min="3" max="12"
+                        value={singleSelectedShape.sides || 6}
+                        onChange={(e) => handleUpdate('sides', e.target.value)}
+                        className="bg-gray-700 rounded p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </ToolWrapper>
+            )}
+
+            {singleSelectedShape?.shapeType === 'star' && (
+                <>
+                    <ToolWrapper>
+                        <ToolLabel htmlFor="points">Points</ToolLabel>
+                        <input id="points" type="number" min="3" max="20"
+                            value={singleSelectedShape.points || 5}
+                            onChange={(e) => handleUpdate('points', e.target.value)}
+                            className="bg-gray-700 rounded p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </ToolWrapper>
+                    <ToolWrapper>
+                        <ToolLabel htmlFor="innerRadiusRatio">Ratio</ToolLabel>
+                        <input id="innerRadiusRatio" type="number" min="0.1" max="0.9" step="0.1"
+                            value={singleSelectedShape.innerRadiusRatio || 0.5}
+                            onChange={(e) => handleUpdate('innerRadiusRatio', e.target.value)}
+                            className="bg-gray-700 rounded p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </ToolWrapper>
+                </>
+            )}
+        </div>
+    );
+  };
+
   const renderArrangeTools = () => {
     const isAtFront = singleSelectedElement ? elementIndex === totalElements - 1 : false;
     const isAtBack = singleSelectedElement ? elementIndex === 0 : false;
@@ -345,6 +424,7 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     <div className="w-full flex justify-center items-center px-4 space-x-6">
       {selectionType === 'text' && renderTextTools()}
       {selectionType === 'image' && renderImageTools()}
+      {selectionType === 'shape' && renderShapeTools()}
       {selectionType === 'mixed' && renderMultiSelectTools()}
       {selectionType === 'group' && <p className="text-sm text-gray-300">Group Selected</p>}
       {selectedElements.length > 0 && renderArrangeTools()}

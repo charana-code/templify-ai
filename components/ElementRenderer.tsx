@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CanvasElement, TextElement, ImageElement, GroupElement } from '../types';
+import { CanvasElement, TextElement, ImageElement, GroupElement, ShapeElement } from '../types';
 
 interface ElementRendererProps {
   element: CanvasElement;
@@ -122,6 +122,44 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     styles.outline = '2px solid #3b82f6';
     styles.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
   }
+  
+  const getPolygonPoints = (sides: number, width: number, height: number, strokeWidth: number) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radiusX = (width - strokeWidth) / 2;
+    const radiusY = (height - strokeWidth) / 2;
+    const angleStep = (2 * Math.PI) / sides;
+    let points = '';
+    for (let i = 0; i < sides; i++) {
+        const angle = angleStep * i - Math.PI / 2;
+        const x = centerX + radiusX * Math.cos(angle);
+        const y = centerY + radiusY * Math.sin(angle);
+        points += `${x},${y} `;
+    }
+    return points.trim();
+  }
+
+  const getStarPoints = (points: number, width: number, height: number, innerRatio: number, strokeWidth: number) => {
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const outerRadiusX = (width - strokeWidth) / 2;
+      const outerRadiusY = (height - strokeWidth) / 2;
+      const innerRadiusX = outerRadiusX * innerRatio;
+      const innerRadiusY = outerRadiusY * innerRatio;
+      const angleStep = Math.PI / points;
+      let path = '';
+      for (let i = 0; i < 2 * points; i++) {
+          const isOuter = i % 2 === 0;
+          const radiusX = isOuter ? outerRadiusX : innerRadiusX;
+          const radiusY = isOuter ? outerRadiusY : innerRadiusY;
+          const angle = angleStep * i - Math.PI / 2;
+          const x = centerX + radiusX * Math.cos(angle);
+          const y = centerY + radiusY * Math.sin(angle);
+          path += `${x},${y} `;
+      }
+      return path.trim();
+  }
+
 
   const renderElement = () => {
     switch (element.type) {
@@ -214,6 +252,38 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             ))}
           </div>
         );
+      case 'shape':
+          const shapeEl = element as ShapeElement;
+          const svgProps = {
+            fill: shapeEl.fill,
+            stroke: shapeEl.stroke,
+            strokeWidth: shapeEl.strokeWidth,
+          };
+          return (
+            <svg width="100%" height="100%" viewBox={`0 0 ${shapeEl.width} ${shapeEl.height}`} style={{ overflow: 'visible' }}>
+              {(() => {
+                switch (shapeEl.shapeType) {
+                  case 'rectangle':
+                    return <rect x={svgProps.strokeWidth / 2} y={svgProps.strokeWidth / 2} width={shapeEl.width - svgProps.strokeWidth} height={shapeEl.height - svgProps.strokeWidth} {...svgProps} />;
+                  case 'ellipse':
+                    return <ellipse cx={shapeEl.width / 2} cy={shapeEl.height / 2} rx={(shapeEl.width - svgProps.strokeWidth) / 2} ry={(shapeEl.height - svgProps.strokeWidth) / 2} {...svgProps} />;
+                  case 'triangle':
+                    const triPoints = `${shapeEl.width / 2},${svgProps.strokeWidth / 2} ${shapeEl.width - svgProps.strokeWidth / 2},${shapeEl.height - svgProps.strokeWidth / 2} ${svgProps.strokeWidth / 2},${shapeEl.height - svgProps.strokeWidth / 2}`;
+                    return <polygon points={triPoints} {...svgProps} />;
+                  case 'polygon':
+                    const polyPoints = getPolygonPoints(shapeEl.sides || 6, shapeEl.width, shapeEl.height, shapeEl.strokeWidth);
+                    return <polygon points={polyPoints} {...svgProps} />;
+                  case 'star':
+                    const starPoints = getStarPoints(shapeEl.points || 5, shapeEl.width, shapeEl.height, shapeEl.innerRadiusRatio || 0.5, shapeEl.strokeWidth);
+                    return <polygon points={starPoints} {...svgProps} />;
+                  case 'line':
+                    return <line x1={shapeEl.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - shapeEl.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={shapeEl.strokeWidth} strokeLinecap="round" />;
+                  default:
+                    return null;
+                }
+              })()}
+            </svg>
+          );
       default:
         return null;
     }

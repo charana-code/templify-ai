@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { CanvasElement, TextElement } from '../types';
+import { CanvasElement, TextElement, ShapeElement } from '../types';
 import { generateImageWithAI } from '../services/geminiService';
 
 const DraggableTextPreset: React.FC<{
@@ -41,6 +41,27 @@ const DraggableTemplateItem: React.FC<{ name: string; elements: any[] }> = ({ na
             <span className="mt-1 text-xs text-gray-300 text-center">{name}</span>
         </div>
     );
+};
+
+const DraggableShapePreset: React.FC<{
+  label: string;
+  element: Omit<ShapeElement, 'id' | 'x' | 'y' | 'rotation'>;
+  children: React.ReactNode;
+}> = ({ label, element, children }) => {
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'element', element }));
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-grab transition-colors flex flex-col items-center justify-center aspect-square"
+    >
+      {children}
+      <span className="mt-2 text-xs">{label}</span>
+    </div>
+  );
 };
 
 
@@ -191,6 +212,50 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
         </div>
     );
 };
+
+const ShapesToolPanel = () => (
+    <div className="p-4">
+      <h3 className="text-lg font-bold text-gray-400 mb-4">Add Shape</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <DraggableShapePreset
+          label="Rectangle"
+          element={{ type: 'shape', shapeType: 'rectangle', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" fill="#3b82f6" /></svg>
+        </DraggableShapePreset>
+        <DraggableShapePreset
+          label="Ellipse"
+          element={{ type: 'shape', shapeType: 'ellipse', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="7" fill="#3b82f6" /></svg>
+        </DraggableShapePreset>
+        <DraggableShapePreset
+          label="Triangle"
+          element={{ type: 'shape', shapeType: 'triangle', width: 120, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L2 22 L22 22 Z" fill="#3b82f6" /></svg>
+        </DraggableShapePreset>
+        <DraggableShapePreset
+          label="Polygon"
+          element={{ type: 'shape', shapeType: 'polygon', width: 120, height: 120, sides: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L21.65 7 L21.65 17 L12 22 L2.35 17 L2.35 7 Z" fill="#3b82f6" /></svg>
+        </DraggableShapePreset>
+        <DraggableShapePreset
+          label="Star"
+          element={{ type: 'shape', shapeType: 'star', width: 120, height: 120, points: 5, innerRadiusRatio: 0.5, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z" fill="#3b82f6" /></svg>
+        </DraggableShapePreset>
+        <DraggableShapePreset
+          label="Line"
+          element={{ type: 'shape', shapeType: 'line', width: 150, height: 4, fill: '#000000', stroke: '#ffffff', strokeWidth: 4 }}
+        >
+          <svg width="40" height="40" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12" stroke="#ffffff" strokeWidth="2" /></svg>
+        </DraggableShapePreset>
+      </div>
+    </div>
+);
 
 const TemplatesPanel: React.FC<{ customTemplates: { name: string, elements: any[] }[] }> = ({ customTemplates }) => {
     const titleSubtitleTemplate = [
@@ -372,7 +437,7 @@ const ExportPanel: React.FC<{
 
 
 interface DetailsPanelProps {
-  activeTool: 'text' | 'image' | 'templates' | 'export' | null;
+  activeTool: 'text' | 'image' | 'shapes' | 'templates' | 'export' | null;
   onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
   customTemplates: { name: string, elements: any[] }[];
   // Props for export panel
@@ -388,6 +453,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
         return <TextToolPanel />;
       case 'image':
         return <ImageToolPanel onAddElement={onAddElement} />;
+      case 'shapes':
+        return <ShapesToolPanel />;
       case 'templates':
         return <TemplatesPanel customTemplates={customTemplates} />;
       case 'export':

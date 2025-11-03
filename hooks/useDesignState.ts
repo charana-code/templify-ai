@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { CanvasElement, TextElement, Guide, ImageElement, GroupElement } from '../types';
+import { CanvasElement, TextElement, Guide, ImageElement, GroupElement, ShapeElement } from '../types';
 import { placeContentWithAI, applyStylesWithAI, editImageWithAI, applyBulkStylesWithAI } from '../services/geminiService';
 import { useHistory } from './useHistory';
 
@@ -74,7 +74,7 @@ export const useDesignState = () => {
   const [customTemplates, setCustomTemplates] = useState<{ name: string, elements: any[] }[]>([]);
   const [liveElements, setLiveElements] = useState<CanvasElement[] | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'export' | null>('templates');
+  const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'shapes' | 'export' | null>('templates');
   const [isDetailsPanelCollapsed, setIsDetailsPanelCollapsed] = useState(false);
 
   const elementsRef = useRef(elements);
@@ -459,12 +459,19 @@ export const useDesignState = () => {
         if (newHeight > minSize) { height = newHeight; y = elementStart.y + dy; }
     }
     const updates: Partial<CanvasElement> = { x, y, width, height };
+    
+    if (element.type === 'shape' && (element as ShapeElement).shapeType === 'line') {
+      (updates as Partial<ShapeElement>).strokeWidth = height;
+    }
+
     if (element.type === 'group') {
         const scaleX = width / elementStart.width;
         const scaleY = height / elementStart.height;
         const updatedChildren = (element as GroupElement).elements.map(child => {
             const newChild = { ...child, x: child.x * scaleX, y: child.y * scaleY, width: child.width * scaleX, height: child.height * scaleY };
             if (newChild.type === 'text') newChild.fontSize *= Math.min(scaleX, scaleY);
+            if (newChild.type === 'shape' && newChild.shapeType === 'line') newChild.strokeWidth *= scaleY;
+            else if (newChild.type === 'shape') newChild.strokeWidth *= Math.min(scaleX, scaleY);
             return newChild;
         });
         (updates as Partial<GroupElement>).elements = updatedChildren;
@@ -656,9 +663,9 @@ export const useDesignState = () => {
     const centerX = minX + (maxX - minX) / 2;
     const centerY = minY + (maxY - minY) / 2;
 
-    // FIX: The recursive function must also use type narrowing to safely destructure elements and avoid creating a "widened" type.
     const convertChildrenToTemplateFormat = (els: CanvasElement[]): any[] => {
       return els.map((childEl: CanvasElement) => {
+        // FIX: Split switch cases to allow for proper type narrowing and avoid exhaustiveness check errors.
         switch (childEl.type) {
           case 'text': {
             const { id, ...rest } = childEl;
@@ -668,14 +675,18 @@ export const useDesignState = () => {
             const { id, ...rest } = childEl;
             return rest;
           }
+          case 'shape': {
+            const { id, ...rest } = childEl;
+            return rest;
+          }
           case 'group': {
             const { id, elements, ...rest } = childEl;
             return { ...rest, elements: convertChildrenToTemplateFormat(elements) };
           }
-          default:
-            // This ensures we handle all cases, preventing runtime errors for new element types.
+          default: {
             const _exhaustiveCheck: never = childEl;
             return _exhaustiveCheck;
+          }
         }
       });
     };
@@ -684,11 +695,9 @@ export const useDesignState = () => {
       const xOffset = (el.x + el.width / 2) - centerX;
       const yOffset = (el.y + el.height / 2) - centerY;
       switch (el.type) {
-        case 'text': {
-          const { id, x, y, ...rest } = el;
-          return { ...rest, xOffset, yOffset };
-        }
-        case 'image': {
+        case 'text':
+        case 'image':
+        case 'shape': {
           const { id, x, y, ...rest } = el;
           return { ...rest, xOffset, yOffset };
         }

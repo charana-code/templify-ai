@@ -1,4 +1,4 @@
-export type ElementType = 'text' | 'image' | 'group';
+export type ElementType = 'text' | 'image' | 'group' | 'shape';
 
 export interface BaseElement {
   id: string;
@@ -33,7 +33,23 @@ export interface GroupElement extends BaseElement {
     elements: CanvasElement[];
 }
 
-export type CanvasElement = TextElement | ImageElement | GroupElement;
+export type ShapeType = 'rectangle' | 'ellipse' | 'triangle' | 'polygon' | 'star' | 'line';
+
+export interface ShapeElement extends BaseElement {
+  type: 'shape';
+  shapeType: ShapeType;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  // For polygon
+  sides?: number;
+  // For star
+  points?: number;
+  innerRadiusRatio?: number;
+}
+
+
+export type CanvasElement = TextElement | ImageElement | GroupElement | ShapeElement;
 
 export interface Guide {
   x1: number;
