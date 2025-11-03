@@ -7,9 +7,9 @@ import { placeContentWithAI, applyStylesWithAI, editImageWithAI, applyBulkStyles
 import { useHistory } from './hooks/useHistory';
 import ContextualToolbar from './components/ContextualToolbar';
 import ArtboardSelector from './components/ArtboardSelector';
-import ExportModal from './components/ExportModal';
 import LayerPanel from './components/LayerPanel';
 import AIPanel from './components/AIPanel';
+import DetailsPanel from './components/DetailsPanel';
 
 const SAVE_KEY = 'gemini-design-studio-save';
 
@@ -79,10 +79,10 @@ const App: React.FC = () => {
   const mainContainerRef = useRef<HTMLElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [selectionRect, setSelectionRect] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [customTemplates, setCustomTemplates] = useState<{ name: string, elements: any[] }[]>([]);
   const [liveElements, setLiveElements] = useState<CanvasElement[] | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'export' | null>('templates');
 
   const elementsRef = useRef(elements);
   elementsRef.current = elements;
@@ -176,7 +176,7 @@ const App: React.FC = () => {
     const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect();
     const { width: artboardWidth, height: artboardHeight } = artboardSize;
     
-    const padding = 64;
+    const padding = 32;
     const availableWidth = containerWidth - padding;
     const availableHeight = containerHeight - padding;
 
@@ -189,24 +189,40 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!artboardSize) return;
-    fitToScreen();
+
+    // Using a timeout ensures that the browser has had a chance to calculate the
+    // layout of the main container before we try to calculate the zoom level.
+    const timer = setTimeout(() => {
+        fitToScreen();
+    }, 0);
+
     window.addEventListener('resize', fitToScreen);
+    
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', fitToScreen);
     };
   }, [artboardSize, fitToScreen]);
+
+  useEffect(() => {
+    // After a zoom change, the scrollable area might change.
+    // We re-center the view to ensure the artboard is fully visible.
+    if (editorContainerRef.current) {
+      const container = editorContainerRef.current;
+      container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+      container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+    }
+  }, [zoom]);
 
 
   const handleArtboardSelect = (width: number, height: number) => {
     setArtboardSize({ width, height });
   };
 
-  const handleAddElement = useCallback((element: Omit<CanvasElement, 'id'>, x: number, y: number) => {
+  const handleAddElement = useCallback((element: Omit<CanvasElement, 'id'>) => {
     const newElement: CanvasElement = {
       ...element,
       id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      x: x - element.width / 2,
-      y: y - element.height / 2,
     } as CanvasElement;
     setElements((prev) => [...prev, newElement]);
   }, [setElements]);
@@ -976,22 +992,63 @@ const App: React.FC = () => {
     const centerX = minX + (maxX - minX) / 2;
     const centerY = minY + (maxY - minY) / 2;
 
+    const convertChildrenToTemplateFormat = (els: CanvasElement[]): any[] => {
+      return els.map((childEl: CanvasElement) => {
+        const { id, ...rest } = childEl;
+        if (rest.type === 'group') {
+          return { ...rest, elements: convertChildrenToTemplateFormat(rest.elements) };
+        }
+        return rest;
+      });
+    };
+
     const templateElements = elements.map(el => {
-      // FIX: The original implementation with spread operator (`...rest`) breaks the discriminated union type of CanvasElement, leading to type errors downstream.
-      // This revised implementation preserves the element type by creating a copy and removing properties, rather than using a spread on a union.
-      const elCopy = { ...el };
       const xOffset = (el.x + el.width / 2) - centerX;
       const yOffset = (el.y + el.height / 2) - centerY;
 
-      delete (elCopy as any).id;
-      delete (elCopy as any).x;
-      delete (elCopy as any).y;
-
-      return {
-        ...elCopy,
-        xOffset,
-        yOffset,
+      const base = {
+          width: el.width,
+          height: el.height,
+          rotation: el.rotation,
+          locked: el.locked,
+          xOffset,
+          yOffset
       };
+
+      // FIX: The original code did not recursively convert child elements for groups,
+      // leading to an inconsistent data structure that caused a TypeScript type error.
+      // This switch now handles all element types correctly, including recursive conversion for groups.
+      switch (el.type) {
+        case 'text':
+          return { 
+            ...base,
+            type: 'text',
+            content: el.content,
+            fontSize: el.fontSize,
+            fontWeight: el.fontWeight,
+            color: el.color,
+            fontFamily: el.fontFamily,
+            textAlign: el.textAlign,
+            lineHeight: el.lineHeight,
+          };
+        case 'image':
+          return {
+            ...base,
+            type: 'image',
+            src: el.src,
+            flipHorizontal: el.flipHorizontal,
+            flipVertical: el.flipVertical,
+          };
+        case 'group':
+          return {
+            ...base,
+            type: 'group',
+            elements: convertChildrenToTemplateFormat(el.elements),
+          };
+        default:
+          const exhaustiveCheck: never = el;
+          return exhaustiveCheck;
+      }
     });
 
     const newTemplate = { name, elements: templateElements };
@@ -1000,7 +1057,6 @@ const App: React.FC = () => {
       const updatedTemplates = [...customTemplates, newTemplate];
       localStorage.setItem('customTemplates', JSON.stringify(updatedTemplates));
       setCustomTemplates(updatedTemplates);
-      setIsExportModalOpen(false);
     } catch (e) {
       console.error("Failed to save template to localStorage", e);
       setError("Could not save template. Storage might be full.");
@@ -1145,12 +1201,21 @@ const App: React.FC = () => {
       )}
       <div className="flex flex-1 overflow-hidden">
         <Toolbar 
-            onExportClick={() => setIsExportModalOpen(true)}
+            activeTool={activeTool}
+            onSetActiveTool={setActiveTool}
+        />
+        <div className="w-px bg-gray-700"></div>
+        <DetailsPanel
+            activeTool={activeTool}
+            onAddElement={handleAddElement}
             customTemplates={customTemplates}
+            editorRef={editorRef}
+            artboardSize={artboardSize}
+            onSaveTemplate={handleSaveTemplate}
         />
         <main ref={mainContainerRef} className="flex-1 flex flex-col relative bg-gray-800">
             <div ref={editorContainerRef} onMouseDown={handleMouseDownOnContainer} className="flex-1 w-full h-full overflow-auto">
-                <div className="min-h-full min-w-full p-8 flex justify-center items-center">
+                <div className="min-h-full min-w-full p-4 flex justify-center items-center">
                     <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.2s ease-in-out' }}>
                         <Editor
                             ref={editorRef}
@@ -1181,7 +1246,7 @@ const App: React.FC = () => {
                     }}
                 />
              )}
-             {isProcessing && !isExportModalOpen && (
+             {isProcessing && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="flex flex-col items-center">
                         <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
@@ -1217,14 +1282,6 @@ const App: React.FC = () => {
             </Accordion>
         </div>
       </div>
-      {isExportModalOpen && artboardSize && (
-        <ExportModal
-          editorRef={editorRef}
-          artboardSize={artboardSize}
-          onClose={() => setIsExportModalOpen(false)}
-          onSaveTemplate={handleSaveTemplate}
-        />
-      )}
     </div>
   );
 };

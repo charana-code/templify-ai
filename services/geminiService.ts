@@ -19,6 +19,29 @@ const parseDataUri = (dataUri: string): { mimeType: string; data: string } | nul
   };
 };
 
+export const generateImageWithAI = async (prompt: string): Promise<string> => {
+  try {
+    const response = await ai.models.generateImages({
+      model: 'imagen-4.0-generate-001',
+      prompt: prompt,
+      config: {
+        numberOfImages: 1,
+        outputMimeType: 'image/jpeg',
+        aspectRatio: '1:1',
+      },
+    });
+
+    if (response.generatedImages && response.generatedImages.length > 0) {
+      const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
+      return `data:image/jpeg;base64,${base64ImageBytes}`;
+    }
+    throw new Error("AI did not return an image.");
+  } catch (error) {
+    console.error("Error with Gemini API (generateImageWithAI):", error);
+    throw new Error("Failed to generate image using AI.");
+  }
+};
+
 
 export const editImageWithAI = async (currentImageSrc: string, prompt: string): Promise<string> => {
   const imageParts = parseDataUri(currentImageSrc);

@@ -42,7 +42,7 @@ const AIPanel: React.FC<AIPanelProps> = ({
 
   return (
     <>
-      <Accordion title="AI Content" defaultOpen>
+      <Accordion title="AI Content">
         <p className="text-xs text-gray-500 mb-2">
           Paste your content below. The AI will analyze it and automatically place it into the text boxes on your canvas.
         </p>

@@ -10,7 +10,7 @@ interface EditorProps {
   guides: Guide[];
   zoom: number;
   editingGroup: GroupElement | null;
-  onAddElement: (element: Omit<CanvasElement, 'id'>, x: number, y: number) => void;
+  onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
   onAddTemplate: (templateElements: any[]) => void;
   onUpdateElement: (id: string, updates: Partial<CanvasElement>) => void;
   onElementMouseDown: (id: string, e: React.MouseEvent) => void;
@@ -44,50 +44,24 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     const editorDiv = (ref as React.RefObject<HTMLDivElement>)?.current;
     if (!editorDiv) return;
 
-    const { type, elements: templateElements } = JSON.parse(e.dataTransfer.getData('application/json'));
+    const data = JSON.parse(e.dataTransfer.getData('application/json'));
     const rect = editorDiv.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;
     const y = (e.clientY - rect.top) / zoom;
     
-    if (type === 'template') {
-        onAddTemplate(templateElements);
+    if (data.type === 'template') {
+        onAddTemplate(data.elements);
         return;
     }
 
-    switch (type) {
-      case 'text':
-        const newTextElement: Omit<TextElement, 'id'> = {
-          type: 'text',
-          content: 'New Text',
-          x,
-          y,
-          width: 200,
-          height: 50,
-          rotation: 0,
-          fontSize: 24,
-          fontWeight: 'normal',
-          color: '#000000',
-          fontFamily: 'Arial',
-          textAlign: 'center',
-          lineHeight: 1.2,
+    if (data.type === 'element') {
+        const elementProps = data.element;
+        const finalElement: Omit<CanvasElement, 'id'> = {
+            ...elementProps,
+            x: x - elementProps.width / 2,
+            y: y - elementProps.height / 2,
         };
-        onAddElement(newTextElement, x, y);
-        break;
-      case 'image':
-        const newImageElement: Omit<ImageElement, 'id'> = {
-          type: 'image',
-          src: 'https://picsum.photos/400/300',
-          x,
-          y,
-          width: 400,
-          height: 300,
-          rotation: 0,
-          flipHorizontal: false,
-          flipVertical: false,
-        };
-        onAddElement(newImageElement, x, y);
-        break;
-      default:
+        onAddElement(finalElement);
         return;
     }
   };
