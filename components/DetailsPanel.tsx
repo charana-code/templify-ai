@@ -219,37 +219,37 @@ const ShapesToolPanel = () => (
       <div className="grid grid-cols-2 gap-4">
         <DraggableShapePreset
           label="Rectangle"
-          element={{ type: 'shape', shapeType: 'rectangle', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+          element={{ type: 'shape', shapeType: 'rectangle', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" fill="#3b82f6" /></svg>
         </DraggableShapePreset>
         <DraggableShapePreset
           label="Ellipse"
-          element={{ type: 'shape', shapeType: 'ellipse', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+          element={{ type: 'shape', shapeType: 'ellipse', width: 150, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="7" fill="#3b82f6" /></svg>
         </DraggableShapePreset>
         <DraggableShapePreset
           label="Triangle"
-          element={{ type: 'shape', shapeType: 'triangle', width: 120, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+          element={{ type: 'shape', shapeType: 'triangle', width: 120, height: 100, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L2 22 L22 22 Z" fill="#3b82f6" /></svg>
         </DraggableShapePreset>
         <DraggableShapePreset
           label="Polygon"
-          element={{ type: 'shape', shapeType: 'polygon', width: 120, height: 120, sides: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+          element={{ type: 'shape', shapeType: 'polygon', width: 120, height: 120, sides: 6, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L21.65 7 L21.65 17 L12 22 L2.35 17 L2.35 7 Z" fill="#3b82f6" /></svg>
         </DraggableShapePreset>
         <DraggableShapePreset
           label="Star"
-          element={{ type: 'shape', shapeType: 'star', width: 120, height: 120, points: 5, innerRadiusRatio: 0.5, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0 }}
+          element={{ type: 'shape', shapeType: 'star', width: 120, height: 120, points: 5, innerRadiusRatio: 0.5, fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z" fill="#3b82f6" /></svg>
         </DraggableShapePreset>
         <DraggableShapePreset
           label="Line"
-          element={{ type: 'shape', shapeType: 'line', width: 150, height: 4, fill: '#000000', stroke: '#ffffff', strokeWidth: 4 }}
+          element={{ type: 'shape', shapeType: 'line', width: 150, height: 4, fill: 'transparent', stroke: '#ffffff', strokeWidth: 4, strokeDash: 'solid' }}
         >
           <svg width="40" height="40" viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12" stroke="#ffffff" strokeWidth="2" /></svg>
         </DraggableShapePreset>

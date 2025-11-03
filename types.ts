@@ -41,6 +41,7 @@ export interface ShapeElement extends BaseElement {
   fill: string;
   stroke: string;
   strokeWidth: number;
+  strokeDash?: 'solid' | 'dashed' | 'dotted';
   // For polygon
   sides?: number;
   // For star

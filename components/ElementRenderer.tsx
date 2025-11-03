@@ -159,6 +159,18 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       }
       return path.trim();
   }
+  
+  const getStrokeDashArray = (strokeDash: ShapeElement['strokeDash'], strokeWidth: number): string | undefined => {
+    if (!strokeDash || strokeDash === 'solid' || !strokeWidth) return undefined;
+    switch (strokeDash) {
+        case 'dashed':
+            return `${strokeWidth * 2}, ${strokeWidth * 1.5}`;
+        case 'dotted':
+            return `1, ${strokeWidth * 2}`;
+        default:
+            return undefined;
+    }
+  };
 
 
   const renderElement = () => {
@@ -255,9 +267,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       case 'shape':
           const shapeEl = element as ShapeElement;
           const svgProps = {
-            fill: shapeEl.fill,
-            stroke: shapeEl.stroke,
+            fill: shapeEl.fill === 'transparent' ? 'none' : shapeEl.fill,
+            stroke: shapeEl.stroke === 'transparent' ? 'none' : shapeEl.stroke,
             strokeWidth: shapeEl.strokeWidth,
+            strokeDasharray: getStrokeDashArray(shapeEl.strokeDash, shapeEl.strokeWidth),
+            // FIX: Use 'as const' to prevent TypeScript from widening the string literal 'round' to 'string'.
+            // This ensures the type is 'round' | undefined, which is compatible with SVG strokeLinecap property.
+            strokeLinecap: shapeEl.strokeDash === 'dotted' ? 'round' as const : undefined,
           };
           return (
             <svg width="100%" height="100%" viewBox={`0 0 ${shapeEl.width} ${shapeEl.height}`} style={{ overflow: 'visible' }}>
@@ -271,13 +287,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                     const triPoints = `${shapeEl.width / 2},${svgProps.strokeWidth / 2} ${shapeEl.width - svgProps.strokeWidth / 2},${shapeEl.height - svgProps.strokeWidth / 2} ${svgProps.strokeWidth / 2},${shapeEl.height - svgProps.strokeWidth / 2}`;
                     return <polygon points={triPoints} {...svgProps} />;
                   case 'polygon':
-                    const polyPoints = getPolygonPoints(shapeEl.sides || 6, shapeEl.width, shapeEl.height, shapeEl.strokeWidth);
+                    const polyPoints = getPolygonPoints(shapeEl.sides || 6, shapeEl.width, shapeEl.height, svgProps.strokeWidth);
                     return <polygon points={polyPoints} {...svgProps} />;
                   case 'star':
-                    const starPoints = getStarPoints(shapeEl.points || 5, shapeEl.width, shapeEl.height, shapeEl.innerRadiusRatio || 0.5, shapeEl.strokeWidth);
+                    const starPoints = getStarPoints(shapeEl.points || 5, shapeEl.width, shapeEl.height, shapeEl.innerRadiusRatio || 0.5, svgProps.strokeWidth);
                     return <polygon points={starPoints} {...svgProps} />;
                   case 'line':
-                    return <line x1={shapeEl.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - shapeEl.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={shapeEl.strokeWidth} strokeLinecap="round" />;
+                    return <line x1={svgProps.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - svgProps.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={svgProps.strokeWidth} strokeLinecap="round" strokeDasharray={svgProps.strokeDasharray} />;
                   default:
                     return null;
                 }

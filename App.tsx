@@ -32,6 +32,7 @@ const App: React.FC = () => {
     customTemplates,
     canUngroup,
     isDetailsPanelCollapsed,
+    isRightPanelCollapsed,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -61,6 +62,7 @@ const App: React.FC = () => {
     handleUpdateSelectedElements,
     handleReorderElement,
     toggleDetailsPanel,
+    toggleRightPanel,
   } = useDesignState();
 
 
@@ -198,30 +200,42 @@ const App: React.FC = () => {
             </div>
           )}
         </main>
-        <div className="w-80 shrink-0 flex flex-col bg-gray-900 text-white overflow-y-auto">
-          <AIPanel
-            isProcessing={isProcessing}
-            onPlaceContent={handlePlaceContent}
-            onApplyStyles={handleApplyStyles}
-            onDeleteElement={handleDeleteElement}
-            singleSelectedElement={singleSelectedElement}
-            selectedElementIds={selectedElementIds}
-          />
-          <Accordion title="Layers" defaultOpen>
-            <LayerPanel
-              elements={elementsToRender}
+        <div className="relative w-px bg-gray-700 shrink-0">
+            <button
+              onClick={toggleRightPanel}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-5 h-16 bg-gray-700 hover:bg-gray-600 text-white rounded-full flex items-center justify-center cursor-pointer group"
+              title={isRightPanelCollapsed ? 'Show Panel' : 'Hide Panel'}
+              aria-label={isRightPanelCollapsed ? 'Show AI & Layers panel' : 'Hide AI & Layers panel'}
+            >
+              <svg className={`w-4 h-4 transition-transform transform group-hover:scale-125 ${isRightPanelCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+        </div>
+        <div className={`shrink-0 flex flex-col bg-gray-900 text-white overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out ${isRightPanelCollapsed ? 'w-0' : 'w-80'}`}>
+          <div className="min-w-[20rem]">
+            <AIPanel
+              isProcessing={isProcessing}
+              onPlaceContent={handlePlaceContent}
+              onApplyStyles={handleApplyStyles}
+              onDeleteElement={handleDeleteElement}
+              singleSelectedElement={singleSelectedElement}
               selectedElementIds={selectedElementIds}
-              onSelectElements={handleSelectElements}
-              onReorder={handleReorderForLayers}
-              editingGroupId={editingGroup?.id ?? null}
-              onSetEditingGroupId={setEditingGroupId}
-              onDelete={handleDeleteElement}
-              onGroup={handleGroup}
-              onUngroup={handleUngroup}
-              canUngroup={canUngroup}
-              onToggleLock={handleToggleLock}
             />
-          </Accordion>
+            <Accordion title="Layers" defaultOpen>
+              <LayerPanel
+                elements={elementsToRender}
+                selectedElementIds={selectedElementIds}
+                onSelectElements={handleSelectElements}
+                onReorder={handleReorderForLayers}
+                editingGroupId={editingGroup?.id ?? null}
+                onSetEditingGroupId={setEditingGroupId}
+                onDelete={handleDeleteElement}
+                onGroup={handleGroup}
+                onUngroup={handleUngroup}
+                canUngroup={canUngroup}
+                onToggleLock={handleToggleLock}
+              />
+            </Accordion>
+          </div>
         </div>
       </div>
     </div>

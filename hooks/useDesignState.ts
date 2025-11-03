@@ -76,6 +76,7 @@ export const useDesignState = () => {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'shapes' | 'export' | null>('templates');
   const [isDetailsPanelCollapsed, setIsDetailsPanelCollapsed] = useState(false);
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   const elementsRef = useRef(elements);
   elementsRef.current = elements;
@@ -158,7 +159,7 @@ export const useDesignState = () => {
       }))
     : (liveElements ?? elements), [activeGroup, liveElements, elements]);
 
-  const elementsToRender = elements;
+  const elementsToRender = liveElements ?? elements;
   const singleSelectedElement = selectedElementIds.length === 1 ? elementsOnCanvas.find(el => el.id === selectedElementIds[0]) : null;
   const singleSelectedElementIndex = singleSelectedElement ? elementsOnCanvas.findIndex(el => el.id === singleSelectedElement.id) : -1;
 
@@ -448,16 +449,61 @@ export const useDesignState = () => {
     const dy = (e.clientY - startY) / zoom;
     const minSize = 20;
     let { x, y, width, height } = elementStart;
-    if (direction.includes('right')) width = Math.max(minSize, elementStart.width + dx);
-    else if (direction.includes('left')) {
-        const newWidth = elementStart.width - dx;
-        if (newWidth > minSize) { width = newWidth; x = elementStart.x + dx; }
+
+    if (e.shiftKey && elementStart.width > 0 && elementStart.height > 0) {
+        const aspectRatio = elementStart.width / elementStart.height;
+
+        let potentialWidth = width;
+        let potentialHeight = height;
+
+        if (direction.includes('right')) potentialWidth = elementStart.width + dx;
+        else if (direction.includes('left')) potentialWidth = elementStart.width - dx;
+        
+        if (direction.includes('bottom')) potentialHeight = elementStart.height + dy;
+        else if (direction.includes('top')) potentialHeight = elementStart.height - dy;
+
+        const isCorner = (direction.includes('left') || direction.includes('right')) && (direction.includes('top') || direction.includes('bottom'));
+        
+        if (isCorner) {
+            if (Math.abs(dx) > Math.abs(dy)) {
+                width = Math.max(minSize, potentialWidth);
+                height = width / aspectRatio;
+            } else {
+                height = Math.max(minSize, potentialHeight);
+                width = height * aspectRatio;
+            }
+        } else if (direction.includes('left') || direction.includes('right')) { // Horizontal resize
+            width = Math.max(minSize, potentialWidth);
+            height = width / aspectRatio;
+        } else { // Vertical resize
+            height = Math.max(minSize, potentialHeight);
+            width = height * aspectRatio;
+        }
+        
+    } else {
+        // Original non-proportional resize logic
+        if (direction.includes('right')) {
+            width = Math.max(minSize, elementStart.width + dx);
+        } else if (direction.includes('left')) {
+            const newWidth = elementStart.width - dx;
+            if (newWidth >= minSize) width = newWidth;
+        }
+        if (direction.includes('bottom')) {
+            height = Math.max(minSize, elementStart.height + dy);
+        } else if (direction.includes('top')) {
+            const newHeight = elementStart.height - dy;
+            if (newHeight >= minSize) height = newHeight;
+        }
     }
-    if (direction.includes('bottom')) height = Math.max(minSize, elementStart.height + dy);
-    else if (direction.includes('top')) {
-        const newHeight = elementStart.height - dy;
-        if (newHeight > minSize) { height = newHeight; y = elementStart.y + dy; }
+    
+    // Adjust position for left/top handles AFTER new dimensions are calculated
+    if (direction.includes('left')) {
+        x = elementStart.x + (elementStart.width - width);
     }
+    if (direction.includes('top')) {
+        y = elementStart.y + (elementStart.height - height);
+    }
+
     const updates: Partial<CanvasElement> = { x, y, width, height };
     
     if (element.type === 'shape' && (element as ShapeElement).shapeType === 'line') {
@@ -636,9 +682,13 @@ export const useDesignState = () => {
         const updater = (prevElements: CanvasElement[]): CanvasElement[] => {
           const applyUpdatesRecursively = (els: CanvasElement[]): CanvasElement[] => els.map(el => {
             let updatedEl = { ...el };
-            if (updatesMap.has(el.id)) updatedEl = { ...updatedEl, ...updatesMap.get(el.id)! };
-            if (updatedEl.type === 'group') updatedEl.elements = applyUpdatesRecursively(updatedEl.elements);
-            return updatedEl as CanvasElement;
+            if (updatesMap.has(el.id)) {
+                updatedEl = { ...updatedEl, ...updatesMap.get(el.id)! } as CanvasElement;
+            }
+            if (updatedEl.type === 'group') {
+                (updatedEl as GroupElement).elements = applyUpdatesRecursively((updatedEl as GroupElement).elements);
+            }
+            return updatedEl;
           });
           return applyUpdatesRecursively(prevElements);
         };
@@ -757,6 +807,10 @@ export const useDesignState = () => {
   const toggleDetailsPanel = useCallback(() => {
     setIsDetailsPanelCollapsed(prev => !prev);
   }, []);
+  
+  const toggleRightPanel = useCallback(() => {
+    setIsRightPanelCollapsed(prev => !prev);
+  }, []);
 
   const handleToggleLock = useCallback((elementIds: string[]) => {
     const idsToToggle = new Set(elementIds);
@@ -772,8 +826,8 @@ export const useDesignState = () => {
   return {
     artboardSize,
     handleArtboardSelect,
-    elements: elementsToRender,
-    elementsToRender: elements,
+    elements: elements,
+    elementsToRender: elementsToRender,
     selectedElementIds,
     singleSelectedElement,
     singleSelectedElementIndex,
@@ -792,6 +846,7 @@ export const useDesignState = () => {
     customTemplates,
     canUngroup,
     isDetailsPanelCollapsed,
+    isRightPanelCollapsed,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -821,5 +876,6 @@ export const useDesignState = () => {
     handleUpdateSelectedElements,
     handleReorderElement,
     toggleDetailsPanel,
+    toggleRightPanel,
   };
 };

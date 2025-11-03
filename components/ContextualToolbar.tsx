@@ -28,6 +28,42 @@ const ToolWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="flex items-center">{children}</div>
 );
 
+const ColorInputWithNone: React.FC<{
+  id: string;
+  value: string; // color hex, 'transparent', or 'mixed'
+  onUpdate: (value: string) => void;
+}> = ({ id, value, onUpdate }) => {
+  const isMixed = value === 'mixed';
+  const isTransparent = value === 'transparent';
+
+  return (
+    <div className="flex items-center bg-gray-700 rounded">
+      <input
+        id={id}
+        type="color"
+        value={isMixed || isTransparent ? '#000000' : value}
+        onChange={(e) => onUpdate(e.target.value)}
+        className="bg-transparent p-0.5 h-8 w-8 cursor-pointer border-2 border-transparent hover:border-blue-500 rounded-l"
+        style={{ opacity: isMixed ? 0.5 : 1 }}
+        aria-label="Color Picker"
+      />
+      <button
+        onClick={() => onUpdate('transparent')}
+        className={`w-8 h-8 flex items-center justify-center rounded-r transition-colors ${
+          isTransparent ? 'bg-blue-600' : 'hover:bg-gray-600'
+        }`}
+        title="No color / Transparent"
+        aria-pressed={isTransparent}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" xmlns="http://www.w3.org/2000/svg">
+            <line x1="15" y1="1" x2="1" y2="15" />
+        </svg>
+      </button>
+    </div>
+  );
+};
+
+
 const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onReorder, onGroup, onUngroup, elementIndex, totalElements }) => {
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
@@ -303,32 +339,29 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     const commonFill = getCommonPropertyValue('fill');
     const commonStroke = getCommonPropertyValue('stroke');
     const commonStrokeWidth = getCommonPropertyValue('strokeWidth');
+    const commonStrokeDash = getCommonPropertyValue('strokeDash') || 'solid';
 
     const singleSelectedShape = singleSelectedElement as ShapeElement | null;
     const isLine = selectedElements.every(el => (el as ShapeElement).shapeType === 'line');
+    
+    const STROKE_DASH_OPTIONS: { value: 'solid' | 'dashed' | 'dotted'; icon: string }[] = [
+        { value: 'solid', icon: '—' },
+        { value: 'dashed', icon: '- -' },
+        { value: 'dotted', icon: '· ·' }
+    ];
 
     return (
         <div className="flex items-center space-x-4 h-full animate-fade-in" role="toolbar" aria-label="Shape Formatting Toolbar">
             {!isLine && (
                 <ToolWrapper>
                     <ToolLabel htmlFor="fillColor">Fill</ToolLabel>
-                    <input id="fillColor" type="color"
-                        value={commonFill === 'mixed' ? '#ffffff' : commonFill}
-                        onChange={(e) => handleUpdate('fill', e.target.value)}
-                        className="bg-gray-700 rounded p-0.5 h-8 w-8 cursor-pointer border-2 border-transparent hover:border-blue-500"
-                        style={{ opacity: commonFill === 'mixed' ? 0.5 : 1 }}
-                        aria-label="Fill Color" />
+                    <ColorInputWithNone id="fillColor" value={commonFill} onUpdate={v => handleUpdate('fill', v)} />
                 </ToolWrapper>
             )}
 
             <ToolWrapper>
                 <ToolLabel htmlFor="strokeColor">Stroke</ToolLabel>
-                <input id="strokeColor" type="color"
-                    value={commonStroke === 'mixed' ? '#ffffff' : commonStroke}
-                    onChange={(e) => handleUpdate('stroke', e.target.value)}
-                    className="bg-gray-700 rounded p-0.5 h-8 w-8 cursor-pointer border-2 border-transparent hover:border-blue-500"
-                    style={{ opacity: commonStroke === 'mixed' ? 0.5 : 1 }}
-                    aria-label="Stroke Color" />
+                <ColorInputWithNone id="strokeColor" value={commonStroke} onUpdate={v => handleUpdate('stroke', v)} />
             </ToolWrapper>
 
             <ToolWrapper>
@@ -338,6 +371,23 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                     placeholder={commonStrokeWidth === 'mixed' ? 'Mixed' : ''}
                     onChange={(e) => handleUpdate('strokeWidth', e.target.value)}
                     className="bg-gray-700 rounded p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </ToolWrapper>
+            
+            <ToolWrapper>
+                <ToolLabel>Style</ToolLabel>
+                <div className="flex bg-gray-700 rounded">
+                    {STROKE_DASH_OPTIONS.map(({ value, icon }) => (
+                    <button
+                        key={value}
+                        onClick={() => handleUpdate('strokeDash', value)}
+                        className={`px-3 py-1 text-sm rounded transition-colors font-mono ${commonStrokeDash === value ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'} ${commonStrokeDash === 'mixed' ? 'bg-gray-500' : ''}`}
+                        aria-pressed={commonStrokeDash === 'mixed' ? 'mixed' : commonStrokeDash === value}
+                        title={value.charAt(0).toUpperCase() + value.slice(1)}
+                    >
+                        {icon}
+                    </button>
+                    ))}
+                </div>
             </ToolWrapper>
             
             {singleSelectedShape?.shapeType === 'polygon' && (
