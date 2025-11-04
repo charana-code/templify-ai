@@ -16,10 +16,13 @@ export interface TextElement extends BaseElement {
   content: string;
   fontSize: number;
   fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
   color: string;
   fontFamily: string;
   textAlign: 'left' | 'center' | 'right';
   lineHeight: number;
+  letterSpacing: number;
+  textTransform: 'none' | 'uppercase' | 'lowercase';
 }
 
 export interface ImageElement extends BaseElement {

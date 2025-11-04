@@ -195,10 +195,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         const textStyles: React.CSSProperties = {
           fontSize: `${textEl.fontSize}px`,
           fontWeight: textEl.fontWeight,
+          fontStyle: textEl.fontStyle,
           color: textEl.color,
           fontFamily: textEl.fontFamily,
           textAlign: textEl.textAlign,
           lineHeight: textEl.lineHeight,
+          letterSpacing: `${textEl.letterSpacing || 0}px`,
+          textTransform: textEl.textTransform || 'none',
           width: '100%',
           height: '100%',
           display: 'flex',

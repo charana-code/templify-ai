@@ -7,6 +7,7 @@ import ArtboardSelector from './components/ArtboardSelector';
 import LayerPanel from './components/LayerPanel';
 import AIPanel from './components/AIPanel';
 import DetailsPanel from './components/DetailsPanel';
+import PropertiesPanel from './components/PropertiesPanel';
 import { useDesignState } from './hooks/useDesignState';
 
 const App: React.FC = () => {
@@ -262,6 +263,15 @@ const App: React.FC = () => {
         </div>
         <div className={`shrink-0 flex flex-col bg-gray-900 text-white overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out ${isRightPanelCollapsed ? 'w-0' : 'w-80'}`}>
           <div className="min-w-[20rem]">
+            {selectedElementIds.length > 0 && (
+              <Accordion title="Properties" defaultOpen>
+                <PropertiesPanel
+                  selectedElementIds={selectedElementIds}
+                  elements={elementsToRender}
+                  onUpdateElements={handleUpdateSelectedElements}
+                />
+              </Accordion>
+            )}
             <AIPanel
               isProcessing={isProcessing}
               onPlaceContent={handlePlaceContent}

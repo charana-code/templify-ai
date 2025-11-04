@@ -77,10 +77,13 @@ const TextToolPanel = () => (
         height: 70,
         fontSize: 48,
         fontWeight: 'bold',
+        fontStyle: 'normal',
         color: '#FFFFFF',
         fontFamily: 'Arial',
         textAlign: 'center',
         lineHeight: 1.2,
+        letterSpacing: 0,
+        textTransform: 'none',
       }}
     />
     <DraggableTextPreset
@@ -92,10 +95,13 @@ const TextToolPanel = () => (
         height: 50,
         fontSize: 32,
         fontWeight: 'normal',
+        fontStyle: 'normal',
         color: '#CCCCCC',
         fontFamily: 'Arial',
         textAlign: 'center',
         lineHeight: 1.3,
+        letterSpacing: 0,
+        textTransform: 'none',
       }}
     />
     <DraggableTextPreset
@@ -107,10 +113,13 @@ const TextToolPanel = () => (
         height: 120,
         fontSize: 16,
         fontWeight: 'normal',
+        fontStyle: 'normal',
         color: '#FFFFFF',
         fontFamily: 'Arial',
         textAlign: 'left',
         lineHeight: 1.5,
+        letterSpacing: 0,
+        textTransform: 'none',
       }}
     />
   </div>
@@ -259,34 +268,34 @@ const ShapesToolPanel = () => (
 
 const TemplatesPanel: React.FC<{ customTemplates: { name: string, elements: any[] }[] }> = ({ customTemplates }) => {
     const titleSubtitleTemplate = [
-        { type: 'text', content: 'Main Title', fontSize: 48, fontWeight: 'bold', width: 400, height: 60, color: '#FFFFFF', fontFamily: 'Arial', lineHeight: 1.2 },
-        { type: 'text', content: 'Supporting subtitle text', fontSize: 24, fontWeight: 'normal', width: 400, height: 40, color: '#CCCCCC', fontFamily: 'Arial', yOffset: 70, lineHeight: 1.4 },
+        { type: 'text', content: 'Main Title', fontSize: 48, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 60, color: '#FFFFFF', fontFamily: 'Arial', lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Supporting subtitle text', fontSize: 24, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 40, color: '#CCCCCC', fontFamily: 'Arial', yOffset: 70, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
     ];
 
     const eventProgramTemplate = [
-        { type: 'text', content: 'EVENT', fontSize: 96, fontWeight: 'bold', width: 500, height: 100, color: '#B91C1C', fontFamily: 'Georgia', xOffset: -50, yOffset: -250, lineHeight: 1.1 },
-        { type: 'text', content: 'PROGRAM', fontSize: 96, fontWeight: 'bold', width: 600, height: 100, color: '#4B5563', fontFamily: 'Georgia', xOffset: 0, yOffset: -160, lineHeight: 1.1 },
-        { type: 'text', content: 'BRIGHTERA', fontSize: 18, fontWeight: 'bold', width: 150, height: 25, color: '#4B5563', fontFamily: 'Arial', xOffset: 250, yOffset: -240, lineHeight: 1.2 },
-        { type: 'text', content: 'TEMPLATE', fontSize: 10, fontWeight: 'normal', width: 150, height: 20, color: '#9CA3AF', fontFamily: 'Arial', xOffset: 250, yOffset: -220, lineHeight: 1.2 },
-        { type: 'text', content: 'Date: April 25, 2050', fontSize: 22, fontWeight: 'bold', width: 350, height: 40, color: '#B91C1C', fontFamily: 'Arial', xOffset: -125, yOffset: -50, lineHeight: 1.2 },
-        { type: 'text', content: 'Time: 9:00 AM – 4:00 PM', fontSize: 22, fontWeight: 'bold', width: 350, height: 40, color: '#B91C1C', fontFamily: 'Arial', xOffset: 200, yOffset: -50, lineHeight: 1.2 },
-        { type: 'text', content: '9:00 AM –\n9:30 AM', fontSize: 20, fontWeight: 'bold', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 50, lineHeight: 1.2 },
-        { type: 'text', content: 'Opening Ceremony', fontSize: 22, fontWeight: 'bold', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 35, lineHeight: 1.2 },
-        { type: 'text', content: 'Welcome address by Dr. Emily Rodriguez, College President.', fontSize: 16, fontWeight: 'normal', width: 400, height: 45, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 65, lineHeight: 1.4 },
-        { type: 'text', content: '9:30 AM –\n11:30 AM', fontSize: 20, fontWeight: 'bold', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 150, lineHeight: 1.2 },
-        { type: 'text', content: 'Student Performances', fontSize: 22, fontWeight: 'bold', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 135, lineHeight: 1.2 },
-        { type: 'text', content: 'Live performances by our students.', fontSize: 16, fontWeight: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 165, lineHeight: 1.4 },
-        { type: 'text', content: '11:45 AM –\n12:30 PM', fontSize: 20, fontWeight: 'bold', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 250, lineHeight: 1.2 },
-        { type: 'text', content: 'Award Ceremony', fontSize: 22, fontWeight: 'bold', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 235, lineHeight: 1.2 },
-        { type: 'text', content: 'Live performances by our students.', fontSize: 16, fontWeight: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 265, lineHeight: 1.4 },
-        { type: 'text', content: '1:45 PM –\n3:00 PM', fontSize: 20, fontWeight: 'bold', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 350, lineHeight: 1.2 },
-        { type: 'text', content: 'Workshops and Panels', fontSize: 22, fontWeight: 'bold', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 335, lineHeight: 1.2 },
-        { type: 'text', content: 'Breakout sessions on key topics in education.', fontSize: 16, fontWeight: 'normal', width: 400, height: 45, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 365, lineHeight: 1.4 },
-        { type: 'text', content: '3:10 PM –\n4:00 PM', fontSize: 20, fontWeight: 'bold', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 450, lineHeight: 1.2 },
-        { type: 'text', content: 'Closing Remarks', fontSize: 22, fontWeight: 'bold', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 435, lineHeight: 1.2 },
-        { type: 'text', content: 'Dr. Rodriguez will summarize the key takeaways.', fontSize: 16, fontWeight: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 465, lineHeight: 1.4 },
-        { type: 'text', content: 'Thank you for celebrating with us!', fontSize: 18, fontWeight: 'normal', width: 600, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 0, yOffset: 550, lineHeight: 1.2 },
-        { type: 'text', content: 'www.template.com', fontSize: 18, fontWeight: 'normal', width: 600, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 0, yOffset: 580, lineHeight: 1.2 },
+        { type: 'text', content: 'EVENT', fontSize: 96, fontWeight: 'bold', fontStyle: 'normal', width: 500, height: 100, color: '#B91C1C', fontFamily: 'Georgia', xOffset: -50, yOffset: -250, lineHeight: 1.1, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'PROGRAM', fontSize: 96, fontWeight: 'bold', fontStyle: 'normal', width: 600, height: 100, color: '#4B5563', fontFamily: 'Georgia', xOffset: 0, yOffset: -160, lineHeight: 1.1, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'BRIGHTERA', fontSize: 18, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 25, color: '#4B5563', fontFamily: 'Arial', xOffset: 250, yOffset: -240, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'TEMPLATE', fontSize: 10, fontWeight: 'normal', fontStyle: 'normal', width: 150, height: 20, color: '#9CA3AF', fontFamily: 'Arial', xOffset: 250, yOffset: -220, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Date: April 25, 2050', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 350, height: 40, color: '#B91C1C', fontFamily: 'Arial', xOffset: -125, yOffset: -50, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Time: 9:00 AM – 4:00 PM', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 350, height: 40, color: '#B91C1C', fontFamily: 'Arial', xOffset: 200, yOffset: -50, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: '9:00 AM –\n9:30 AM', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 50, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Opening Ceremony', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 35, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Welcome address by Dr. Emily Rodriguez, College President.', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 45, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 65, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: '9:30 AM –\n11:30 AM', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 150, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Student Performances', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 135, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Live performances by our students.', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 165, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: '11:45 AM –\n12:30 PM', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 250, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Award Ceremony', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 235, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Live performances by our students.', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 265, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: '1:45 PM –\n3:00 PM', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 350, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Workshops and Panels', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 335, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Breakout sessions on key topics in education.', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 45, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 365, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: '3:10 PM –\n4:00 PM', fontSize: 20, fontWeight: 'bold', fontStyle: 'normal', width: 150, height: 60, color: '#4B5563', fontFamily: 'Arial', xOffset: -225, yOffset: 450, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Closing Remarks', fontSize: 22, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 75, yOffset: 435, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Dr. Rodriguez will summarize the key takeaways.', fontSize: 16, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 75, yOffset: 465, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Thank you for celebrating with us!', fontSize: 18, fontWeight: 'normal', fontStyle: 'normal', width: 600, height: 30, color: '#B91C1C', fontFamily: 'Arial', xOffset: 0, yOffset: 550, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'www.template.com', fontSize: 18, fontWeight: 'normal', fontStyle: 'normal', width: 600, height: 30, color: '#4B5563', fontFamily: 'Arial', xOffset: 0, yOffset: 580, lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
     ];
     return (
         <div className="p-4 space-y-4">

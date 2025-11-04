@@ -145,8 +145,10 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
   Below is the JSON representation of the currently selected design element. Based on the user's command, generate a JSON object with the properties that need to be updated.
   - Only return changed properties.
   - For colors, use hex codes (e.g., '#FF0000').
-  - For 'fontSize', 'width', 'height', 'rotation', 'lineHeight', use a number.
+  - For 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', use a number.
   - For 'fontWeight', use 'normal' or 'bold'.
+  - For 'fontStyle', use 'normal' or 'italic'.
+  - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
   - For 'fontFamily', suggest a common web font like 'Arial', 'Verdana', 'Georgia', 'Times New Roman', or 'Courier New'.
 
   Selected Element:
@@ -160,8 +162,11 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
     color: { type: Type.STRING, description: "Hex color code" },
     fontSize: { type: Type.NUMBER, description: "Font size in pixels" },
     fontWeight: { type: Type.STRING, description: "'normal' or 'bold'" },
+    fontStyle: { type: Type.STRING, description: "'normal' or 'italic'" },
     fontFamily: { type: Type.STRING, description: "CSS font family" },
     lineHeight: { type: Type.NUMBER, description: "Line height (e.g. 1.5 for 150%)" },
+    letterSpacing: { type: Type.NUMBER, description: "Letter spacing in pixels" },
+    textTransform: { type: Type.STRING, description: "'none', 'uppercase', or 'lowercase'" },
     width: { type: Type.NUMBER, description: "Width in pixels" },
     height: { type: Type.NUMBER, description: "Height in pixels" },
     rotation: { type: Type.NUMBER, description: "Rotation in degrees" },
@@ -183,7 +188,8 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
     });
     const resultText = response.text.trim();
     return JSON.parse(resultText);
-  } catch (error) {
+  } catch (error)
+{
     console.error("Error with Gemini API (applyStylesWithAI):", error);
     throw new Error("Failed to apply styles using AI.");
   }
@@ -196,8 +202,10 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
   - Only return changed properties.
   - For alignment/distribution, calculate new coordinates. For example, for "align left", all elements should get the same 'x' coordinate of the leftmost element.
   - For colors, use hex codes (e.g., '#FF0000').
-  - For numerical values like 'fontSize', 'width', 'height', 'rotation', 'lineHeight', use a number.
+  - For numerical values like 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', use a number.
   - For 'fontWeight', use 'normal' or 'bold'.
+  - For 'fontStyle', use 'normal' or 'italic'.
+  - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
 
   Selected Elements:
   ${JSON.stringify(elements.map(({ id, type, x, y, width, height }) => ({ id, type, x, y, width, height })), null, 2)}
@@ -217,8 +225,11 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
     color: { type: Type.STRING, description: "Hex color code" },
     fontSize: { type: Type.NUMBER, description: "Font size in pixels" },
     fontWeight: { type: Type.STRING, description: "'normal' or 'bold'" },
+    fontStyle: { type: Type.STRING, description: "'normal' or 'italic'" },
     fontFamily: { type: Type.STRING, description: "CSS font family" },
     lineHeight: { type: Type.NUMBER, description: "Line height (e.g. 1.5 for 150%)" },
+    letterSpacing: { type: Type.NUMBER, description: "Letter spacing in pixels" },
+    textTransform: { type: Type.STRING, description: "'none', 'uppercase', or 'lowercase'" },
     content: { type: Type.STRING, description: "The text content of the element" }
   };
 

@@ -914,15 +914,39 @@ export const useDesignState = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); setSelectedElementIds(elementsToRender.filter(el => !el.locked).map(el => el.id)); }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) { e.preventDefault(); handleGroup(); }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); handleUngroup(); }
+      // FIX: Refactored copy logic to fix type errors with discriminated unions.
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         if (selectedElementIds.length === 0 || editingGroupId) return;
         const elementsToCopy = elements.filter(el => selectedElementIds.includes(el.id));
         clipboardRef.current = elementsToCopy.map((el): Omit<CanvasElement, 'id'> => {
-          const { id, ...rest } = el;
-          return rest;
+          // By switching on `el.type`, TypeScript correctly narrows the type of `el`
+          // in each case, allowing the destructuring to produce a correctly typed `rest` object.
+          switch (el.type) {
+            case 'text': {
+              const { id, ...rest } = el;
+              return rest;
+            }
+            case 'image': {
+              const { id, ...rest } = el;
+              return rest;
+            }
+            case 'shape': {
+              const { id, ...rest } = el;
+              return rest;
+            }
+            case 'group': {
+              const { id, ...rest } = el;
+              return rest;
+            }
+            default: {
+                const _exhaustiveCheck: never = el;
+                throw new Error(`Unhandled element type for copy: ${(_exhaustiveCheck as any).type}`);
+            }
+          }
         });
       }
+      // FIX: Refactored paste logic to fix type errors with discriminated unions.
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         e.preventDefault();
         if (clipboardRef.current.length === 0 || editingGroupId) return;
@@ -932,28 +956,38 @@ export const useDesignState = () => {
           const newX = el.x + pasteOffset;
           const newY = el.y + pasteOffset;
 
-          // FIX: Use a switch statement to correctly narrow the union type before spreading.
-          // This avoids creating an invalid object shape from spreading a union type and allows
-          // TypeScript to correctly infer the return type.
           switch (el.type) {
             case 'text':
-              return { ...el, id: newId, x: newX, y: newY };
+              return { ...(el as Omit<TextElement, 'id'>), id: newId, x: newX, y: newY };
             case 'image':
-              return { ...el, id: newId, x: newX, y: newY };
+              return { ...(el as Omit<ImageElement, 'id'>), id: newId, x: newX, y: newY };
             case 'shape':
-              return { ...el, id: newId, x: newX, y: newY };
+              return { ...(el as Omit<ShapeElement, 'id'>), id: newId, x: newX, y: newY };
             case 'group':
-              return { ...el, id: newId, x: newX, y: newY };
+              return { ...(el as Omit<GroupElement, 'id'>), id: newId, x: newX, y: newY };
             default:
-              // This exhaustiveness check ensures that all element types are handled.
-              const _exhaustiveCheck: never = el;
-              throw new Error(`Unhandled element type in paste: ${(_exhaustiveCheck as any).type}`);
+              // This case should be unreachable if all element types are handled.
+              throw new Error(`Unhandled element type in paste: ${(el as any).type}`);
           }
         });
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
-        clipboardRef.current = newElements.map(({ id, ...rest }) => rest);
+        clipboardRef.current = newElements.map((el): Omit<CanvasElement, 'id'> => {
+            switch (el.type) {
+                case 'text':
+                case 'image':
+                case 'shape':
+                case 'group': {
+                    const { id, ...rest } = el;
+                    return rest;
+                }
+                default:
+                    const _exhaustiveCheck: never = el;
+                    throw new Error(`Unhandled element type for clipboard: ${(_exhaustiveCheck as any).type}`);
+            }
+        });
       }
+      // FIX: Refactored duplicate logic to fix type errors with discriminated unions.
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         if (selectedElementIds.length === 0 || editingGroupId) return;
@@ -965,8 +999,6 @@ export const useDesignState = () => {
           const newX = el.x + duplicateOffset;
           const newY = el.y + duplicateOffset;
           
-          // FIX: Use a switch statement to correctly narrow the union type before spreading.
-          // This ensures that TypeScript can infer the correct, specific type for each new element.
           switch (el.type) {
             case 'text':
               return { ...el, id: newId, x: newX, y: newY };
@@ -978,7 +1010,6 @@ export const useDesignState = () => {
               return { ...el, id: newId, x: newX, y: newY };
             default:
               const _exhaustiveCheck: never = el;
-              // This path should be unreachable if all element types are handled.
               throw new Error(`Unhandled element type for duplication: ${(_exhaustiveCheck as any).type}`);
           }
         });
