@@ -9,10 +9,22 @@ interface ContextualToolbarProps {
 }
 
 const FONT_FAMILIES = ['Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
-const TEXT_ALIGN_OPTIONS: { value: 'left' | 'center' | 'right', label: string, icon: string }[] = [
-    { value: 'left', label: 'Align Left', icon: '📄' },
-    { value: 'center', label: 'Align Center', icon: '📄' },
-    { value: 'right', label: 'Align Right', icon: '📄' }
+const TEXT_ALIGN_OPTIONS: { value: 'left' | 'center' | 'right'; label: string; icon: React.ReactNode }[] = [
+    { 
+        value: 'left', 
+        label: 'Align Left', 
+        icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm0 4h10v2H3V8zm0 4h14v2H3v-2zm0 4h10v2H3v-2z"/></svg>
+    },
+    { 
+        value: 'center', 
+        label: 'Align Center', 
+        icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm2 4h10v2H5V8zm-2 4h14v2H3v-2zm2 4h10v2H5v-2z"/></svg>
+    },
+    { 
+        value: 'right', 
+        label: 'Align Right', 
+        icon: <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h14v2H3V4zm4 4h10v2H7V8zm-4 4h14v2H3v-2zm4 4h10v2H7v-2z"/></svg>
+    }
 ];
 
 const ToolLabel: React.FC<{ children: React.ReactNode, htmlFor?: string }> = ({ children, htmlFor }) => (
@@ -77,6 +89,7 @@ const AlignButton: React.FC<{
 
 
 const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onAlignOrDistribute }) => {
+  // FIX: All hooks are moved to the top level to be called unconditionally on every render.
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +104,8 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     const firstType = selectedElements[0].type;
     return selectedElements.every(el => el.type === firstType) ? firstType : 'mixed';
   }, [selectedElements]);
+
+  const isAnyLocked = useMemo(() => selectedElements.some(el => el.locked), [selectedElements]);
 
   const singleSelectedElement = selectedElements.length === 1 ? selectedElements[0] : null;
 
@@ -149,7 +164,10 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
   };
   
   const renderTextTools = () => {
-    if (selectionType !== 'text') return null;
+    if (selectionType !== 'text' && selectionType !== 'mixed') return null;
+    
+    const textElements = selectedElements.filter(el => el.type === 'text');
+    if(textElements.length === 0) return null;
 
     const commonFontFamily = getCommonPropertyValue('fontFamily');
     const commonFontSize = getCommonPropertyValue('fontSize');
@@ -198,13 +216,14 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
         <ToolWrapper>
             <ToolLabel>Align</ToolLabel>
             <div className="flex bg-gray-700 rounded">
-                {TEXT_ALIGN_OPTIONS.map(({value, label}) => (
+                {TEXT_ALIGN_OPTIONS.map(({value, label, icon}) => (
                      <button key={value} onClick={() => handleUpdate('textAlign', value)} 
-                        className={`px-3 py-1 text-sm rounded transition-colors ${commonTextAlign === value ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'}`}
+                        className={`px-3 py-1.5 rounded transition-colors ${commonTextAlign === value ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'}`}
                         aria-pressed={commonTextAlign === value}
                         aria-label={label}
+                        title={label}
                      >
-                        {value.charAt(0).toUpperCase()}
+                        {icon}
                      </button>
                 ))}
             </div>
@@ -224,7 +243,10 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
   };
   
   const renderImageTools = () => {
-    if (selectionType !== 'image') return null;
+    if (selectionType !== 'image' && selectionType !== 'mixed') return null;
+
+    const imageElements = selectedElements.filter(el => el.type === 'image');
+    if (imageElements.length === 0) return null;
     
     const commonRotation = getCommonPropertyValue('rotation');
     const commonFlipH = getCommonPropertyValue('flipHorizontal');
@@ -345,7 +367,10 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
   };
 
   const renderShapeTools = () => {
-    if (selectionType !== 'shape') return null;
+    if (selectionType !== 'shape' && selectionType !== 'mixed') return null;
+
+    const shapeElements = selectedElements.filter(el => el.type === 'shape');
+    if(shapeElements.length === 0) return null;
 
     const commonFill = getCommonPropertyValue('fill');
     const commonStroke = getCommonPropertyValue('stroke');
@@ -401,7 +426,7 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                 </div>
             </ToolWrapper>
             
-            {singleSelectedShape?.shapeType === 'polygon' && (
+            {singleSelectedElement?.type === 'shape' && singleSelectedShape?.shapeType === 'polygon' && (
                 <ToolWrapper>
                     <ToolLabel htmlFor="sides">Sides</ToolLabel>
                     <input id="sides" type="number" min="3" max="12"
@@ -411,7 +436,7 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                 </ToolWrapper>
             )}
 
-            {singleSelectedShape?.shapeType === 'star' && (
+            {singleSelectedElement?.type === 'shape' && singleSelectedShape?.shapeType === 'star' && (
                 <>
                     <ToolWrapper>
                         <ToolLabel htmlFor="points">Points</ToolLabel>
@@ -434,7 +459,6 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
   };
   
   const renderAlignmentTools = () => {
-    const isAnyLocked = useMemo(() => selectedElements.some(el => el.locked), [selectedElements]);
     const canDistribute = selectedElements.length > 2;
     return (
         <div className="flex items-center space-x-2 h-full animate-fade-in" role="toolbar" aria-label="Alignment Toolbar">
@@ -507,15 +531,44 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
         </div>
     );
   }
+
+  const renderContent = () => {
+    if (selectedElements.length > 1) {
+        return (
+            <>
+                {renderAlignmentTools()}
+                {selectionType === 'mixed' && renderTextTools()}
+                {selectionType === 'mixed' && renderImageTools()}
+                {selectionType === 'mixed' && renderShapeTools()}
+                {renderArrangeTools()}
+            </>
+        )
+    }
+
+    if (selectedElements.length === 1) {
+        let primaryToolbar = null;
+        switch(selectionType) {
+            case 'text': primaryToolbar = renderTextTools(); break;
+            case 'image': primaryToolbar = renderImageTools(); break;
+            case 'shape': primaryToolbar = renderShapeTools(); break;
+            case 'group': primaryToolbar = <p className="text-sm text-gray-300">Group Selected</p>; break;
+            default: break;
+        }
+
+        return (
+            <>
+                {primaryToolbar}
+                {renderArrangeTools()}
+            </>
+        )
+    }
+
+    return null;
+  }
   
   return (
     <div className="w-full flex justify-center items-center px-4 space-x-6">
-      {selectedElements.length === 1 && selectionType === 'text' && renderTextTools()}
-      {selectedElements.length === 1 && selectionType === 'image' && renderImageTools()}
-      {selectedElements.length === 1 && selectionType === 'shape' && renderShapeTools()}
-      {selectedElements.length === 1 && singleSelectedElement?.type === 'group' && <p className="text-sm text-gray-300">Group Selected</p>}
-      {selectedElements.length > 1 && renderAlignmentTools()}
-      {selectedElements.length > 0 && renderArrangeTools()}
+      {renderContent()}
     </div>
   );
 };

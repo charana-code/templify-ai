@@ -178,8 +178,15 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
       setLastClickedId(null);
     } else if (selectedElementIds.length === 1) {
       setLastClickedId(selectedElementIds[0]);
+    } else {
+      // FIX: If multiple items are selected (e.g., by drag-select), and our current
+      // anchor is no longer part of that selection, we must clear it to prevent
+      // invalid range selections on the next shift-click.
+      if (lastClickedId && !selectedElementIds.includes(lastClickedId)) {
+          setLastClickedId(null);
+      }
     }
-  }, [selectedElementIds]);
+  }, [selectedElementIds, lastClickedId]);
 
   const elementsToShow = editingGroupId
     ? (elements.find(el => el.id === editingGroupId && el.type === 'group') as GroupElement)?.elements ?? []
