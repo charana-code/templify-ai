@@ -94,15 +94,15 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     return allSame ? firstValue : 'mixed';
   };
 
-  const handleUpdate = (key: keyof TextElement | keyof ImageElement | keyof ShapeElement, value: any) => {
+  const handleUpdate = (key: keyof TextElement | keyof ImageElement | keyof ShapeElement | 'opacity', value: any) => {
     let parsedValue = value;
     // FIX: Changed type of numberKeys to string[] to allow for keys specific to certain element types.
-    const numberKeys: string[] = ['fontSize', 'rotation', 'lineHeight', 'strokeWidth', 'sides', 'points', 'innerRadiusRatio'];
+    const numberKeys: string[] = ['fontSize', 'rotation', 'lineHeight', 'strokeWidth', 'sides', 'points', 'innerRadiusRatio', 'opacity'];
     if (numberKeys.includes(key)) {
         if (typeof value === 'string' && value === '') {
             return; // Don't update if number input is cleared
         }
-        parsedValue = (key === 'lineHeight' || key === 'innerRadiusRatio') ? parseFloat(value) : parseInt(value, 10);
+        parsedValue = (key === 'lineHeight' || key === 'innerRadiusRatio' || key === 'opacity') ? parseFloat(value) : parseInt(value, 10);
         if (isNaN(parsedValue)) return;
     }
 
@@ -427,7 +427,9 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     const isAtBack = singleSelectedElement ? elementIndex === 0 : false;
     const canMoveFront = selectedElementIds.length > 0 && !elements.every((el, idx) => selectedElementIds.includes(el.id) || idx < totalElements - selectedElementIds.length);
     const canMoveBack = selectedElementIds.length > 0 && !elements.every((el, idx) => selectedElementIds.includes(el.id) || idx >= selectedElementIds.length);
-    
+    const commonOpacity = getCommonPropertyValue('opacity');
+    const opacityValue = commonOpacity === 'mixed' ? 1 : (commonOpacity ?? 1);
+
     return (
         <div className="flex items-center space-x-4 h-full animate-fade-in" role="toolbar" aria-label="Arrange Toolbar">
             {selectedElements.length > 1 && (
@@ -437,6 +439,26 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                 <button onClick={onUngroup} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold transition-colors">Ungroup</button>
             )}
             <div className="h-6 w-px bg-gray-600"></div>
+            <ToolWrapper>
+                <ToolLabel htmlFor="opacity">Opacity</ToolLabel>
+                <div className="flex items-center bg-gray-700 rounded">
+                    <input id="opacity" type="range" min="0" max="1" step="0.01" 
+                        value={opacityValue}
+                        style={{ opacity: commonOpacity === 'mixed' ? 0.5 : 1 }}
+                        onChange={(e) => handleUpdate('opacity', e.target.value)}
+                        className="w-24 p-1"
+                        aria-label="Opacity slider"
+                    />
+                    <input type="number"
+                        min="0" max="100"
+                        value={commonOpacity === 'mixed' ? '' : Math.round(opacityValue * 100)}
+                        placeholder={commonOpacity === 'mixed' ? 'Mixed' : ''}
+                        onChange={(e) => handleUpdate('opacity', (parseInt(e.target.value, 10) || 0) / 100)}
+                        className="bg-gray-800 rounded-r p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Opacity percentage"
+                    />
+                </div>
+            </ToolWrapper>
             <ToolWrapper>
                 <ToolLabel>Arrange</ToolLabel>
                 <div className="flex bg-gray-700 rounded">

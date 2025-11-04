@@ -15,6 +15,7 @@ interface EditorProps {
   onUpdateElement: (id: string, updates: Partial<CanvasElement>) => void;
   onElementMouseDown: (id: string, e: React.MouseEvent) => void;
   onResizeStart: (id: string, direction: string, e: React.MouseEvent) => void;
+  onRotationStart: (id: string, e: React.MouseEvent) => void;
   onElementDoubleClick: (id: string) => void;
 }
 
@@ -31,6 +32,7 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   onUpdateElement,
   onElementMouseDown,
   onResizeStart,
+  onRotationStart,
   onElementDoubleClick,
 }, ref) => {
 
@@ -101,6 +103,7 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
           onElementMouseDown={onElementMouseDown}
           onUpdate={onUpdateElement}
           onResizeStart={onResizeStart}
+          onRotationStart={onRotationStart}
           onElementDoubleClick={onElementDoubleClick}
           zIndex={index}
           totalElements={elements.length}

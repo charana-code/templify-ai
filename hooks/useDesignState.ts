@@ -77,6 +77,7 @@ export const useDesignState = () => {
   const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'shapes' | 'export' | null>('templates');
   const [isDetailsPanelCollapsed, setIsDetailsPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const clipboardRef = useRef<Omit<CanvasElement, 'id'>[]>([]);
 
   const elementsRef = useRef(elements);
   elementsRef.current = elements;
@@ -145,6 +146,13 @@ export const useDesignState = () => {
     startX: number;
     startY: number;
     elementStart: { x: number; y: number; width: number; height: number };
+  } | null>(null);
+
+  const rotationInfo = useRef<{
+    elementId: string;
+    elementStartRotation: number;
+    center: { x: number; y: number };
+    startAngle: number;
   } | null>(null);
 
   const activeGroup = useMemo(() => editingGroupId
@@ -425,7 +433,7 @@ export const useDesignState = () => {
   const handleElementMouseDown = useCallback((id: string, e: React.MouseEvent) => {
     const element = elementsOnCanvas.find(el => el.id === id);
     if (!element || element.locked) return;
-    if (resizeInfo.current) return;
+    if (resizeInfo.current || rotationInfo.current) return;
     e.stopPropagation();
     let nextSelectedIds: string[];
     const isAlreadySelected = selectedElementIds.includes(id);
@@ -549,6 +557,65 @@ export const useDesignState = () => {
     document.addEventListener('mousemove', handleDocumentMouseMoveForResize);
     document.addEventListener('mouseup', handleDocumentMouseUpForResize);
   }, [elements, elementsOnCanvas, handleDocumentMouseMoveForResize, handleDocumentMouseUpForResize]);
+  
+  const handleDocumentMouseMoveForRotation = useCallback((e: MouseEvent) => {
+    if (!rotationInfo.current || !editorRef.current) return;
+    const { elementId, elementStartRotation, center, startAngle } = rotationInfo.current;
+    
+    const editorRect = editorRef.current.getBoundingClientRect();
+    const mouseX = (e.clientX - editorRect.left) / zoom;
+    const mouseY = (e.clientY - editorRect.top) / zoom;
+    
+    const currentAngle = Math.atan2(mouseY - center.y, mouseX - center.x) * (180 / Math.PI);
+    
+    let deltaAngle = currentAngle - startAngle;
+    let newRotation = elementStartRotation + deltaAngle;
+    
+    if (e.shiftKey) {
+        newRotation = Math.round(newRotation / 15) * 15;
+    }
+    
+    setLiveElements(currentLiveElements => {
+        if (!currentLiveElements) return currentLiveElements;
+        const updater = makeElementUpdater(elementId, { rotation: newRotation }, activeGroup);
+        return updater(currentLiveElements);
+    });
+  }, [zoom, activeGroup]);
+
+  const handleDocumentMouseUpForRotation = useCallback(() => {
+      setLiveElements(currentLiveElements => {
+          if (currentLiveElements) setElements(currentLiveElements);
+          return null;
+      });
+      document.removeEventListener('mousemove', handleDocumentMouseMoveForRotation);
+      document.removeEventListener('mouseup', handleDocumentMouseUpForRotation);
+      rotationInfo.current = null;
+  }, [handleDocumentMouseMoveForRotation, setElements]);
+
+  const handleRotationStart = useCallback((elementId: string, e: React.MouseEvent) => {
+    const element = elementsOnCanvas.find(el => el.id === elementId);
+    if (!element || !editorRef.current) return;
+    e.stopPropagation();
+    const editorRect = editorRef.current.getBoundingClientRect();
+    const centerX = element.x + element.width / 2;
+    const centerY = element.y + element.height / 2;
+    
+    const mouseX = (e.clientX - editorRect.left) / zoom;
+    const mouseY = (e.clientY - editorRect.top) / zoom;
+    
+    const startAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+    
+    rotationInfo.current = {
+      elementId,
+      elementStartRotation: element.rotation,
+      center: { x: centerX, y: centerY },
+      startAngle: startAngle,
+    };
+    
+    setLiveElements(elements);
+    document.addEventListener('mousemove', handleDocumentMouseMoveForRotation);
+    document.addEventListener('mouseup', handleDocumentMouseUpForRotation);
+  }, [elements, elementsOnCanvas, zoom, handleDocumentMouseMoveForRotation, handleDocumentMouseUpForRotation]);
 
     const handleMouseDownOnContainer = (e: React.MouseEvent) => {
         const container = e.currentTarget as HTMLElement;
@@ -636,16 +703,81 @@ export const useDesignState = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+
+      if (e.key.startsWith('Arrow')) {
+          e.preventDefault();
+          if (selectedElementIds.length === 0) return;
+          const amount = e.shiftKey ? 10 : 1;
+          let dx = 0, dy = 0;
+          if (e.key === 'ArrowLeft') dx = -amount;
+          if (e.key === 'ArrowRight') dx = amount;
+          if (e.key === 'ArrowUp') dy = -amount;
+          if (e.key === 'ArrowDown') dy = amount;
+
+          setElements(prevElements => {
+              const selectedIdsSet = new Set(selectedElementIds);
+              const nudgeRecursively = (elementsToNudge: CanvasElement[]): CanvasElement[] => {
+                  return elementsToNudge.map(el => {
+                      if (selectedIdsSet.has(el.id) && !el.locked) {
+                          return { ...el, x: el.x + dx, y: el.y + dy };
+                      }
+                      if (el.type === 'group') {
+                          if (selectedIdsSet.has(el.id)) return el;
+                          return { ...el, elements: nudgeRecursively(el.elements) };
+                      }
+                      return el;
+                  });
+              };
+              return nudgeRecursively(prevElements);
+          });
+          return;
+      }
       if (e.key === 'Escape' && editingGroupId) { e.preventDefault(); setEditingGroupId(null); setSelectedElementIds([editingGroupId]); return; }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSaveDesign(); }
       if ((e.key === 'Backspace' || e.key === 'Delete') && selectedElementIds.length > 0) { e.preventDefault(); handleDeleteElement(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); setSelectedElementIds(elementsToRender.filter(el => !el.locked).map(el => el.id)); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey) { e.preventDefault(); handleGroup(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) { e.preventDefault(); handleGroup(); }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); handleUngroup(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        if (selectedElementIds.length === 0 || editingGroupId) return;
+        const elementsToCopy = elements.filter(el => selectedElementIds.includes(el.id));
+        clipboardRef.current = elementsToCopy.map(({ id, ...rest }) => rest);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        if (clipboardRef.current.length === 0 || editingGroupId) return;
+        const pasteOffset = 20;
+        const newElements: CanvasElement[] = clipboardRef.current.map(el => ({
+          ...el,
+          id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          x: el.x + pasteOffset,
+          y: el.y + pasteOffset,
+        } as CanvasElement));
+        setElements(prev => [...prev, ...newElements]);
+        setSelectedElementIds(newElements.map(el => el.id));
+        clipboardRef.current = newElements.map(({ id, ...rest }) => rest);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        if (selectedElementIds.length === 0 || editingGroupId) return;
+        const duplicateOffset = 20;
+        const elementsToDuplicate = elements.filter(el => selectedElementIds.includes(el.id));
+        if (elementsToDuplicate.some(el => el.locked)) return;
+        const newElements: CanvasElement[] = elementsToDuplicate.map(el => ({
+          ...el,
+          id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          x: el.x + duplicateOffset,
+          y: el.y + duplicateOffset,
+        }));
+        setElements(prev => [...prev, ...newElements]);
+        setSelectedElementIds(newElements.map(el => el.id));
+      }
+
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElementIds, handleDeleteElement, elements, handleGroup, handleUngroup, editingGroupId, elementsToRender, handleSaveDesign]);
+  }, [selectedElementIds, handleDeleteElement, elements, handleGroup, handleUngroup, editingGroupId, elementsToRender, handleSaveDesign, setElements]);
 
   const handlePlaceContent = async (content: string) => {
     setIsProcessing(true); setError(null);
@@ -715,16 +847,10 @@ export const useDesignState = () => {
 
     const convertChildrenToTemplateFormat = (els: CanvasElement[]): any[] => {
       return els.map((childEl: CanvasElement) => {
-        // FIX: Split switch cases to allow for proper type narrowing and avoid exhaustiveness check errors.
+        // FIX: Grouping these cases resolves the type-checking issue with the exhaustiveness check.
         switch (childEl.type) {
-          case 'text': {
-            const { id, ...rest } = childEl;
-            return rest;
-          }
-          case 'image': {
-            const { id, ...rest } = childEl;
-            return rest;
-          }
+          case 'text':
+          case 'image':
           case 'shape': {
             const { id, ...rest } = childEl;
             return rest;
@@ -861,6 +987,7 @@ export const useDesignState = () => {
     handleElementMouseDown,
     handleUpdateElement,
     handleResizeStart,
+    handleRotationStart,
     handleElementDoubleClick,
     handleMouseDownOnContainer,
     handlePlaceContent,

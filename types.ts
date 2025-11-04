@@ -8,6 +8,7 @@ export interface BaseElement {
   height: number;
   rotation: number;
   locked?: boolean;
+  opacity?: number;
 }
 
 export interface TextElement extends BaseElement {

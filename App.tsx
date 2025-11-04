@@ -47,6 +47,7 @@ const App: React.FC = () => {
     handleElementMouseDown,
     handleUpdateElement,
     handleResizeStart,
+    handleRotationStart,
     handleElementDoubleClick,
     handleMouseDownOnContainer,
     handlePlaceContent,
@@ -176,6 +177,7 @@ const App: React.FC = () => {
                   onElementMouseDown={handleElementMouseDown}
                   onUpdateElement={handleUpdateElement}
                   onResizeStart={handleResizeStart}
+                  onRotationStart={handleRotationStart}
                   onElementDoubleClick={handleElementDoubleClick}
                 />
               </div>
@@ -230,6 +232,7 @@ const App: React.FC = () => {
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}
                 onGroup={handleGroup}
+                // FIX: Pass handleUngroup to the onUngroup prop. The variable 'onUngroup' was not defined.
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
                 onToggleLock={handleToggleLock}

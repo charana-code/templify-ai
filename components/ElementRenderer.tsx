@@ -9,6 +9,7 @@ interface ElementRendererProps {
   onUpdate: (id:string, updates: Partial<CanvasElement>) => void;
   onElementMouseDown: (id: string, e: React.MouseEvent) => void;
   onResizeStart: (id: string, direction: string, e: React.MouseEvent) => void;
+  onRotationStart: (id: string, e: React.MouseEvent) => void;
   onElementDoubleClick: (id: string) => void;
   zIndex: number;
   totalElements: number;
@@ -46,6 +47,18 @@ const ResizeHandle: React.FC<{
   return <div style={style} onMouseDown={onMouseDown} />;
 };
 
+const RotationHandle: React.FC<{ onMouseDown: (e: React.MouseEvent) => void }> = ({ onMouseDown }) => {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute left-1/2 -translate-x-1/2 -top-7 w-4 h-4 bg-blue-500 border border-white rounded-full cursor-alias"
+      style={{ zIndex: 21 }}
+      title="Rotate element (hold Shift to snap)"
+    />
+  );
+};
+
+
 const ElementRenderer: React.FC<ElementRendererProps> = ({ 
   element, 
   isSelected,
@@ -54,6 +67,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   onUpdate, 
   onElementMouseDown, 
   onResizeStart,
+  onRotationStart,
   onElementDoubleClick,
   zIndex,
   totalElements,
@@ -116,6 +130,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     userSelect: 'none',
     boxSizing: 'border-box',
     zIndex: isDragging ? 9999 : (isSelected ? totalElements : zIndex),
+    opacity: element.opacity ?? 1,
   };
 
   if (isSelected && !isEditing) {
@@ -257,6 +272,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                 onElementMouseDown={() => {}}
                 onUpdate={() => {}}
                 onResizeStart={() => {}}
+                onRotationStart={() => {}}
                 onElementDoubleClick={() => {}}
                 zIndex={index}
                 totalElements={groupEl.elements.length}
@@ -324,16 +340,19 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       onDoubleClick={handleDoubleClick}
     >
       {renderElement()}
-       {isResizable && !isEditing &&
-        resizeHandles.map(handle => (
-          <ResizeHandle
-            key={handle.position}
-            position={handle.position}
-            cursor={handle.cursor}
-            onMouseDown={(e) => onResizeStart(element.id, handle.position, e)}
-          />
-        ))
-      }
+       {isResizable && !isEditing && (
+        <>
+          {resizeHandles.map(handle => (
+            <ResizeHandle
+              key={handle.position}
+              position={handle.position}
+              cursor={handle.cursor}
+              onMouseDown={(e) => onResizeStart(element.id, handle.position, e)}
+            />
+          ))}
+          <RotationHandle onMouseDown={(e) => onRotationStart(element.id, e)} />
+        </>
+      )}
     </div>
   );
 };
