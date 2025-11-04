@@ -95,10 +95,9 @@ const App: React.FC = () => {
         <div className="w-1/3"></div>
         <div className="w-1/3 text-center">
           {selectedElementIds.length > 0 ? (
+            // FIX: Removed `elements` and `onUpdateElements` props as they are not defined in `ContextualToolbarProps`.
             <ContextualToolbar
               selectedElementIds={selectedElementIds}
-              elements={elementsToRender}
-              onUpdateElements={handleUpdateSelectedElements}
               onAlignOrDistribute={handleAlignOrDistribute}
             />
           ) : (

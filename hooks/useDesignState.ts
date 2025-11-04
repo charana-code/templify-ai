@@ -973,10 +973,21 @@ export const useDesignState = () => {
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
         clipboardRef.current = newElements.map((el): Omit<CanvasElement, 'id'> => {
+            // FIX: Separated switch cases to ensure correct type narrowing for discriminated unions.
+            // This prevents TypeScript from creating a mish-mash object type for `rest`.
             switch (el.type) {
-                case 'text':
-                case 'image':
-                case 'shape':
+                case 'text': {
+                    const { id, ...rest } = el;
+                    return rest;
+                }
+                case 'image': {
+                    const { id, ...rest } = el;
+                    return rest;
+                }
+                case 'shape': {
+                    const { id, ...rest } = el;
+                    return rest;
+                }
                 case 'group': {
                     const { id, ...rest } = el;
                     return rest;

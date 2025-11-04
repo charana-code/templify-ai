@@ -107,15 +107,38 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
              { value: 'Courier New', label: 'Courier New' },
         ]} />
         <div className="flex space-x-2">
-            <button onClick={() => handleUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full p-1 rounded ${element.fontWeight === 'bold' ? 'bg-blue-600' : 'bg-gray-700'}`}>B</button>
-            <button onClick={() => handleUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`w-full p-1 rounded ${element.fontStyle === 'italic' ? 'bg-blue-600' : 'bg-gray-700'}`}>I</button>
-            <button onClick={() => handleUpdate({ textTransform: element.textTransform === 'uppercase' ? 'none' : 'uppercase' })} className={`w-full p-1 rounded ${element.textTransform === 'uppercase' ? 'bg-blue-600' : 'bg-gray-700'}`}>TT</button>
+            <button onClick={() => handleUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full p-1 rounded ${element.fontWeight === 'bold' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>B</button>
+            <button onClick={() => handleUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`w-full p-1 rounded ${element.fontStyle === 'italic' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>I</button>
+            <button onClick={() => handleUpdate({ textTransform: element.textTransform === 'uppercase' ? 'none' : 'uppercase' })} className={`w-full p-1 rounded ${element.textTransform === 'uppercase' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>TT</button>
         </div>
         <NumberInput label="Line Height" value={element.lineHeight} onChange={v => handleUpdate({ lineHeight: v })} step={0.1} />
         <NumberInput label="Spacing" value={element.letterSpacing} onChange={v => handleUpdate({ letterSpacing: v })} suffix="px" />
-        <SelectInput label="Align" value={element.textAlign} onChange={v => handleUpdate({ textAlign: v as TextElement['textAlign'] })} options={[
-             { value: 'left', label: 'Left' }, { value: 'center', label: 'Center' }, { value: 'right', label: 'Right' },
-        ]} />
+        <div className="flex items-center justify-between">
+            <label className="text-xs text-gray-400">Align</label>
+            <div className="flex space-x-1 bg-gray-800 border border-gray-700 rounded-md p-0.5">
+                <button
+                    onClick={() => handleUpdate({ textAlign: 'left' })}
+                    className={`p-1.5 rounded-sm ${element.textAlign === 'left' ? 'bg-blue-600' : 'hover:bg-gray-600'}`}
+                    title="Align Left"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm0 15h12v2H3v-2zm0-5h18v2H3v-2zm0-5h12v2H3V9z"></path></svg>
+                </button>
+                <button
+                    onClick={() => handleUpdate({ textAlign: 'center' })}
+                    className={`p-1.5 rounded-sm ${element.textAlign === 'center' ? 'bg-blue-600' : 'hover:bg-gray-600'}`}
+                    title="Align Center"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm3 15h12v2H6v-2zm-3-5h18v2H3v-2zm3-5h12v2H6V9z"></path></svg>
+                </button>
+                <button
+                    onClick={() => handleUpdate({ textAlign: 'right' })}
+                    className={`p-1.5 rounded-sm ${element.textAlign === 'right' ? 'bg-blue-600' : 'hover:bg-gray-600'}`}
+                    title="Align Right"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18v2H3V4zm9 15h9v2h-9v-2zm-9-5h18v2H3v-2zm9-5h9v2h-9V9z"></path></svg>
+                </button>
+            </div>
+        </div>
     </>
   );
 
