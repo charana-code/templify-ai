@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Toolbar from './components/Toolbar';
 import Editor from './components/Editor';
 import Accordion from './components/Accordion';
@@ -13,10 +13,10 @@ const App: React.FC = () => {
   const {
     artboardSize,
     handleArtboardSelect,
+    elements,
     elementsToRender,
     selectedElementIds,
     singleSelectedElement,
-    singleSelectedElementIndex,
     draggingElementId,
     guides,
     zoom,
@@ -25,6 +25,8 @@ const App: React.FC = () => {
     isDirty,
     canUndo,
     canRedo,
+    canZoomIn,
+    canZoomOut,
     error,
     selectionRect,
     isProcessing,
@@ -38,6 +40,9 @@ const App: React.FC = () => {
     editorRef,
     handleSaveDesign,
     fitToScreen,
+    handleZoomIn,
+    handleZoomOut,
+    handleSetZoom,
     undo,
     redo,
     setError,
@@ -68,6 +73,17 @@ const App: React.FC = () => {
   } = useDesignState();
 
 
+  const zoomOptions = useMemo(() => {
+    const defaultLevels = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+    if (!defaultLevels.includes(zoom)) {
+        const newLevels = [...defaultLevels, zoom];
+        newLevels.sort((a, b) => a - b);
+        return newLevels;
+    }
+    return defaultLevels;
+  }, [zoom]);
+
+
   if (!artboardSize) {
     return <ArtboardSelector onSelect={handleArtboardSelect} />;
   }
@@ -82,12 +98,7 @@ const App: React.FC = () => {
               selectedElementIds={selectedElementIds}
               elements={elementsToRender}
               onUpdateElements={handleUpdateSelectedElements}
-              onReorder={(direction) => handleReorderElement(selectedElementIds, direction)}
-              onGroup={handleGroup}
-              onUngroup={handleUngroup}
               onAlignOrDistribute={handleAlignOrDistribute}
-              elementIndex={singleSelectedElementIndex}
-              totalElements={elementsToRender.length}
             />
           ) : (
             <h1 className="text-xl font-bold">Gemini Design Studio</h1>
@@ -103,6 +114,40 @@ const App: React.FC = () => {
           >
             {isDirty ? '💾 Save' : '✅ Saved'}
           </button>
+          
+          <div className="flex items-center bg-gray-700 rounded-md text-sm font-semibold">
+            <button
+                onClick={handleZoomOut}
+                disabled={!canZoomOut}
+                className="px-3 py-1.5 hover:bg-gray-600 rounded-l-md disabled:text-gray-500 disabled:cursor-not-allowed"
+                title="Zoom Out"
+                aria-label="Zoom Out"
+            >
+                -
+            </button>
+            <select
+                value={zoom}
+                onChange={(e) => handleSetZoom(parseFloat(e.target.value))}
+                className="bg-gray-700 appearance-none text-center focus:outline-none w-20 py-1.5 cursor-pointer hover:bg-gray-600"
+                aria-label="Set zoom level"
+            >
+                {zoomOptions.map(level => (
+                    <option key={level} value={level}>
+                        {Math.round(level * 100)}%
+                    </option>
+                ))}
+            </select>
+            <button
+                onClick={handleZoomIn}
+                disabled={!canZoomIn}
+                className="px-3 py-1.5 hover:bg-gray-600 rounded-r-md disabled:text-gray-500 disabled:cursor-not-allowed"
+                title="Zoom In"
+                aria-label="Zoom In"
+            >
+                +
+            </button>
+          </div>
+          
           <button
             onClick={fitToScreen}
             className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-semibold transition-colors"
@@ -111,6 +156,7 @@ const App: React.FC = () => {
           >
             ⛶
           </button>
+
           <div className="h-6 w-px bg-gray-600"></div>
           <button
             onClick={undo}
@@ -226,17 +272,18 @@ const App: React.FC = () => {
             />
             <Accordion title="Layers" defaultOpen>
               <LayerPanel
-                elements={elementsToRender}
+                elements={elements}
                 selectedElementIds={selectedElementIds}
                 onSelectElements={handleSelectElements}
                 onReorder={handleReorderForLayers}
+                onReorderSelection={(direction) => handleReorderElement(selectedElementIds, direction)}
                 editingGroupId={editingGroup?.id ?? null}
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}
                 onGroup={handleGroup}
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
-                onToggleLock={handleToggleLock}
+                onToggleLock={(ids) => handleToggleLock(ids)}
               />
             </Accordion>
           </div>

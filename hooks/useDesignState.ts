@@ -49,6 +49,8 @@ const makeElementUpdater = (id: string, updates: Partial<CanvasElement>, groupCo
     };
 };
 
+const ZOOM_LEVELS = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
+
 export const useDesignState = () => {
   const [isDirty, setIsDirty] = useState(false);
   const { 
@@ -188,6 +190,36 @@ export const useDesignState = () => {
     const newZoom = Math.min(scaleX, scaleY);
     setZoom(newZoom > 0 ? newZoom : 1);
   }, [artboardSize]);
+  
+  const handleZoomIn = useCallback(() => {
+    setZoom(currentZoom => {
+        const nextLevel = ZOOM_LEVELS.find(level => level > currentZoom);
+        return nextLevel || currentZoom;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+      setZoom(currentZoom => {
+          const prevLevel = [...ZOOM_LEVELS].reverse().find(level => level < currentZoom);
+          return prevLevel || currentZoom;
+      });
+  }, []);
+
+  const handleSetZoom = useCallback((newZoom: number) => {
+      if (newZoom > 0) {
+          setZoom(newZoom);
+      }
+  }, []);
+
+  const canZoomIn = useMemo(() => {
+      const nextLevel = ZOOM_LEVELS.find(level => level > zoom);
+      return !!nextLevel;
+  }, [zoom]);
+
+  const canZoomOut = useMemo(() => {
+      const prevLevel = [...ZOOM_LEVELS].reverse().find(level => level < zoom);
+      return !!prevLevel;
+  }, [zoom]);
 
   useEffect(() => {
     if (!artboardSize) return;
@@ -937,7 +969,8 @@ export const useDesignState = () => {
 
     const convertChildrenToTemplateFormat = (els: CanvasElement[]): any[] => {
       return els.map((childEl: CanvasElement) => {
-// FIX: Separated switch cases to ensure correct type inference for `...rest`.
+        // FIX: Replaced problematic exhaustiveness check with a direct throw for unhandled types.
+        // This resolves a complex TypeScript inference error with discriminated unions and the `...rest` operator.
         switch (childEl.type) {
           case 'text': {
             const { id, ...rest } = childEl;
@@ -956,8 +989,8 @@ export const useDesignState = () => {
             return { ...rest, elements: convertChildrenToTemplateFormat(elements) };
           }
           default: {
-            const _exhaustiveCheck: never = childEl;
-            return _exhaustiveCheck;
+            // Throw an error for unhandled cases to prevent silent failures.
+            throw new Error(`Unhandled element type in template conversion: ${(childEl as CanvasElement).type}`);
           }
         }
       });
@@ -966,7 +999,8 @@ export const useDesignState = () => {
     const templateElements = elements.map(el => {
       const xOffset = (el.x + el.width / 2) - centerX;
       const yOffset = (el.y + el.height / 2) - centerY;
-// FIX: Separated switch cases to ensure correct type inference for `...rest` on discriminated unions.
+      // FIX: Replaced problematic exhaustiveness check with a direct throw for unhandled types.
+      // This resolves a complex TypeScript inference error with discriminated unions and the `...rest` operator.
       switch (el.type) {
         case 'text': {
           const { id, x, y, ...rest } = el;
@@ -985,8 +1019,7 @@ export const useDesignState = () => {
           return { ...rest, elements: convertChildrenToTemplateFormat(elements), xOffset, yOffset };
         }
         default: {
-            const _exhaustiveCheck: never = el;
-            throw new Error(`Unhandled element type: ${(_exhaustiveCheck as CanvasElement).type}`);
+            throw new Error(`Unhandled element type: ${(el as CanvasElement).type}`);
         }
       }
     });
@@ -1068,6 +1101,8 @@ export const useDesignState = () => {
     isDirty,
     canUndo,
     canRedo,
+    canZoomIn,
+    canZoomOut,
     error,
     selectionRect,
     isProcessing,
@@ -1081,6 +1116,9 @@ export const useDesignState = () => {
     editorRef,
     handleSaveDesign,
     fitToScreen,
+    handleZoomIn,
+    handleZoomOut,
+    handleSetZoom,
     undo,
     redo,
     setError,

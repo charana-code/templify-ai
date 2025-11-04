@@ -5,12 +5,7 @@ interface ContextualToolbarProps {
   selectedElementIds: string[];
   elements: CanvasElement[];
   onUpdateElements: (updates: Partial<CanvasElement>) => void;
-  onReorder: (direction: 'forward' | 'backward' | 'front' | 'back') => void;
-  onGroup: () => void;
-  onUngroup: () => void;
   onAlignOrDistribute: (operation: 'align-left' | 'align-center' | 'align-right' | 'align-top' | 'align-middle' | 'align-bottom' | 'distribute-horizontal' | 'distribute-vertical') => void;
-  elementIndex: number;
-  totalElements: number;
 }
 
 const FONT_FAMILIES = ['Arial', 'Verdana', 'Georgia', 'Times New Roman', 'Courier New'];
@@ -81,7 +76,7 @@ const AlignButton: React.FC<{
 );
 
 
-const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onReorder, onGroup, onUngroup, onAlignOrDistribute, elementIndex, totalElements }) => {
+const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onAlignOrDistribute }) => {
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -484,22 +479,11 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
   };
 
   const renderArrangeTools = () => {
-    const isAtFront = singleSelectedElement ? elementIndex === totalElements - 1 : false;
-    const isAtBack = singleSelectedElement ? elementIndex === 0 : false;
-    const canMoveFront = selectedElementIds.length > 0 && !elements.every((el, idx) => selectedElementIds.includes(el.id) || idx < totalElements - selectedElementIds.length);
-    const canMoveBack = selectedElementIds.length > 0 && !elements.every((el, idx) => selectedElementIds.includes(el.id) || idx >= selectedElementIds.length);
     const commonOpacity = getCommonPropertyValue('opacity');
     const opacityValue = commonOpacity === 'mixed' ? 1 : (commonOpacity ?? 1);
 
     return (
         <div className="flex items-center space-x-4 h-full animate-fade-in" role="toolbar" aria-label="Arrange Toolbar">
-            {selectedElements.length > 1 && (
-                 <button onClick={onGroup} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold transition-colors">Group</button>
-            )}
-             {singleSelectedElement?.type === 'group' && (
-                <button onClick={onUngroup} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold transition-colors">Ungroup</button>
-            )}
-            <div className="h-6 w-px bg-gray-600"></div>
             <ToolWrapper>
                 <ToolLabel htmlFor="opacity">Opacity</ToolLabel>
                 <div className="flex items-center bg-gray-700 rounded">
@@ -518,27 +502,6 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
                         className="bg-gray-800 rounded-r p-1 text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         aria-label="Opacity percentage"
                     />
-                </div>
-            </ToolWrapper>
-            <ToolWrapper>
-                <ToolLabel>Arrange</ToolLabel>
-                <div className="flex bg-gray-700 rounded">
-                    <button onClick={() => onReorder('backward')} disabled={isAtBack || !singleSelectedElement} title="Send Backward" aria-label="Send Backward"
-                        className="px-3 py-1 text-sm rounded-l transition-colors hover:bg-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed">
-                        ↓
-                    </button>
-                    <button onClick={() => onReorder('forward')} disabled={isAtFront || !singleSelectedElement} title="Bring Forward" aria-label="Bring Forward"
-                        className="px-3 py-1 text-sm transition-colors hover:bg-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed">
-                        ↑
-                    </button>
-                    <button onClick={() => onReorder('back')} disabled={!canMoveBack} title="Send to Back" aria-label="Send to Back"
-                        className="px-3 py-1 text-sm transition-colors hover:bg-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed">
-                        ⇊
-                    </button>
-                    <button onClick={() => onReorder('front')} disabled={!canMoveFront} title="Bring to Front" aria-label="Bring to Front"
-                        className="px-3 py-1 text-sm rounded-r transition-colors hover:bg-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed">
-                        ⇈
-                    </button>
                 </div>
             </ToolWrapper>
         </div>

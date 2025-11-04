@@ -287,8 +287,6 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             stroke: shapeEl.stroke === 'transparent' ? 'none' : shapeEl.stroke,
             strokeWidth: shapeEl.strokeWidth,
             strokeDasharray: getStrokeDashArray(shapeEl.strokeDash, shapeEl.strokeWidth),
-            // FIX: Use 'as const' to prevent TypeScript from widening the string literal 'round' to 'string'.
-            // This ensures the type is 'round' | undefined, which is compatible with SVG strokeLinecap property.
             strokeLinecap: shapeEl.strokeDash === 'dotted' ? 'round' as const : undefined,
           };
           return (
@@ -309,7 +307,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                     const starPoints = getStarPoints(shapeEl.points || 5, shapeEl.width, shapeEl.height, shapeEl.innerRadiusRatio || 0.5, svgProps.strokeWidth);
                     return <polygon points={starPoints} {...svgProps} />;
                   case 'line':
-                    return <line x1={svgProps.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - svgProps.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={svgProps.strokeWidth} strokeLinecap="round" strokeDasharray={svgProps.strokeDasharray} />;
+                    // FIX: Use the calculated svgProps for strokeLinecap to ensure consistent styling, especially for dotted lines.
+                    return <line x1={svgProps.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - svgProps.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={svgProps.strokeWidth} strokeLinecap={svgProps.strokeLinecap ?? 'butt'} strokeDasharray={svgProps.strokeDasharray} />;
                   default:
                     return null;
                 }

@@ -25,6 +25,9 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
         return { icon: '🖼️', name: 'Image' };
       case 'group':
         return { icon: '📁', name: 'Group' };
+      case 'shape':
+        const shapeEl = el as any;
+        return { icon: '◇', name: shapeEl.shapeType.charAt(0).toUpperCase() + shapeEl.shapeType.slice(1) };
       default:
         return { icon: '?', name: 'Unknown' };
     }
@@ -155,6 +158,7 @@ interface LayerPanelProps {
   selectedElementIds: string[];
   onSelectElements: (ids: string[], mode: 'set' | 'add') => void;
   onReorder: (draggedId: string, targetId: string, position: 'before' | 'after') => void;
+  onReorderSelection: (direction: 'forward' | 'backward' | 'front' | 'back') => void;
   editingGroupId: string | null;
   onSetEditingGroupId: (id: string | null) => void;
   onDelete: () => void;
@@ -164,7 +168,7 @@ interface LayerPanelProps {
   onToggleLock: (ids: string[]) => void;
 }
 
-const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, onSelectElements, onReorder, editingGroupId, onSetEditingGroupId, onDelete, onGroup, onUngroup, canUngroup, onToggleLock }) => {
+const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, onSelectElements, onReorder, onReorderSelection, editingGroupId, onSetEditingGroupId, onDelete, onGroup, onUngroup, canUngroup, onToggleLock }) => {
     
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
@@ -221,6 +225,33 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
     return selectedElementIds.some(id => allElementsById.get(id)?.locked);
   }, [selectedElementIds, elements]);
 
+  const { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack } = useMemo(() => {
+    if (selectedElementIds.length === 0 || editingGroupId) {
+        return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
+    }
+
+    const totalElements = elements.length;
+    
+    const isSingleSelection = selectedElementIds.length === 1;
+    const singleSelectedId = isSingleSelection ? selectedElementIds[0] : null;
+    const elementIndex = singleSelectedId ? elements.findIndex(el => el.id === singleSelectedId) : -1;
+
+    const indices = selectedElementIds.map(id => elements.findIndex(el => el.id === id)).filter(i => i !== -1);
+    if(indices.length === 0) {
+          return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
+    }
+
+    const topMostIndex = Math.max(...indices);
+    const bottomMostIndex = Math.min(...indices);
+
+    const canMoveForward = isSingleSelection && elementIndex > -1 && elementIndex < totalElements - 1;
+    const canMoveBackward = isSingleSelection && elementIndex > 0;
+    const canMoveToFront = topMostIndex < totalElements - 1;
+    const canMoveToBack = bottomMostIndex > 0;
+
+    return { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack };
+  }, [selectedElementIds, elements, editingGroupId]);
+
 
   return (
     <div className="w-full text-white flex flex-col">
@@ -246,31 +277,59 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
                 Exit Group
             </button>
         )}
-        <div className="shrink-0 p-2 border-t border-gray-700 flex items-center justify-around">
-            <button
-                onClick={onGroup}
-                disabled={isEditing || selectedElementIds.length < 2 || isAnySelectedLocked}
-                className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                title="Group Layers (Ctrl+G)"
-            >
-                <span role="img" aria-label="Group">📁+</span>
-            </button>
-             <button
-                onClick={onUngroup}
-                disabled={isEditing || !canUngroup || isAnySelectedLocked}
-                className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                title="Ungroup Layers (Ctrl+Shift+G)"
-            >
-                <span role="img" aria-label="Ungroup">📁-</span>
-            </button>
-            <button
-                onClick={onDelete}
-                disabled={selectedElementIds.length === 0 || isAnySelectedLocked}
-                className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                title="Delete Layer (Delete)"
-            >
-                <span role="img" aria-label="Delete">🗑️</span>
-            </button>
+        <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
+            <div className="flex items-center justify-around">
+                <button
+                    onClick={() => onReorderSelection('backward')}
+                    disabled={!canMoveBackward || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Send Backward"
+                >↓</button>
+                <button
+                    onClick={() => onReorderSelection('forward')}
+                    disabled={!canMoveForward || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Bring Forward"
+                >↑</button>
+                <button
+                    onClick={() => onReorderSelection('back')}
+                    disabled={!canMoveToBack || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Send to Back"
+                >⇊</button>
+                <button
+                    onClick={() => onReorderSelection('front')}
+                    disabled={!canMoveToFront || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Bring to Front"
+                >⇈</button>
+            </div>
+             <div className="flex items-center justify-around">
+                <button
+                    onClick={onGroup}
+                    disabled={isEditing || selectedElementIds.length < 2 || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Group Layers (Ctrl+G)"
+                >
+                    <span role="img" aria-label="Group">📁+</span>
+                </button>
+                <button
+                    onClick={onUngroup}
+                    disabled={isEditing || !canUngroup || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Ungroup Layers (Ctrl+Shift+G)"
+                >
+                    <span role="img" aria-label="Ungroup">📁-</span>
+                </button>
+                <button
+                    onClick={onDelete}
+                    disabled={selectedElementIds.length === 0 || isAnySelectedLocked}
+                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                    title="Delete Layer (Delete)"
+                >
+                    <span role="img" aria-label="Delete">🗑️</span>
+                </button>
+            </div>
         </div>
     </div>
   );
