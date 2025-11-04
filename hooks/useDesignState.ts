@@ -382,51 +382,76 @@ export const useDesignState = () => {
     const { elementsStart, startX, startY } = dragInfo.current;
     const dx = (e.clientX - startX) / zoom;
     const dy = (e.clientY - startY) / zoom;
-    const SNAP_THRESHOLD = 5 / zoom;
+    
     const draggedElementIds = new Set(elementsStart.map(s => s.id));
     const otherElements = elementsOnCanvas.filter(el => !draggedElementIds.has(el.id));
     const draggedElementsWithPos = elementsStart.map(start => ({ ...elementsOnCanvas.find(e => e.id === start.id)!, x: start.x + dx, y: start.y + dy }));
     if (draggedElementsWithPos.length === 0) return;
+
     const selectionBounds = draggedElementsWithPos.reduce((acc, el) => ({
         minX: Math.min(acc.minX, el.x), minY: Math.min(acc.minY, el.y),
         maxX: Math.max(acc.maxX, el.x + el.width), maxY: Math.max(acc.maxY, el.y + el.height),
     }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+    
     const draggedBounds = {
         left: selectionBounds.minX, top: selectionBounds.minY, right: selectionBounds.maxX, bottom: selectionBounds.maxY,
         centerX: selectionBounds.minX + (selectionBounds.maxX - selectionBounds.minX) / 2,
         centerY: selectionBounds.minY + (selectionBounds.maxY - selectionBounds.minY) / 2,
     };
-    let snapDx = 0, snapDy = 0;
+    
+    let snapDx = 0;
+    let snapDy = 0;
     const newGuides: Guide[] = [];
-    const artboardCenterX = artboardSize.width / 2, artboardCenterY = artboardSize.height / 2;
-    const snapTargets = [...otherElements.map(el => ({
-        left: el.x, right: el.x + el.width, centerX: el.x + el.width / 2,
-        top: el.y, bottom: el.y + el.height, centerY: el.y + el.height / 2,
-    })), { left: NaN, right: NaN, centerX: artboardCenterX, top: NaN, bottom: NaN, centerY: artboardCenterY }];
-    let xSnapped = false;
-    for (const target of snapTargets) {
-      for (const check of [{ dragged: draggedBounds.centerX, target: target.centerX }, { dragged: draggedBounds.left, target: target.left }, { dragged: draggedBounds.right, target: target.right }, { dragged: draggedBounds.left, target: target.right }, { dragged: draggedBounds.right, target: target.left }]) {
-        if (Math.abs(check.dragged - check.target) < SNAP_THRESHOLD) {
-          snapDx = check.dragged - check.target;
-          newGuides.push({ x1: check.target, y1: 0, x2: check.target, y2: artboardSize.height });
-          xSnapped = true; break;
+    const SNAP_THRESHOLD = 5 / zoom;
+
+    const artboardTarget = {
+        left: 0, centerX: artboardSize.width / 2, right: artboardSize.width,
+        top: 0, centerY: artboardSize.height / 2, bottom: artboardSize.height,
+    };
+    const elementTargets = otherElements.map(el => ({
+        left: el.x, centerX: el.x + el.width / 2, right: el.x + el.width,
+        top: el.y, centerY: el.y + el.height / 2, bottom: el.y + el.height,
+    }));
+    const allTargets = [artboardTarget, ...elementTargets];
+
+    let bestXSnap = { diff: Infinity, targetValue: 0 };
+    for (const target of allTargets) {
+        for (const draggedEdge of ['left', 'centerX', 'right'] as const) {
+            for (const targetEdge of ['left', 'centerX', 'right'] as const) {
+                const diff = Math.abs(draggedBounds[draggedEdge] - target[targetEdge]);
+                if (diff < SNAP_THRESHOLD && diff < bestXSnap.diff) {
+                    bestXSnap = { diff, targetValue: target[targetEdge] };
+                    snapDx = draggedBounds[draggedEdge] - target[targetEdge];
+                }
+            }
         }
-      }
-      if (xSnapped) break;
     }
-    let ySnapped = false;
-    for (const target of snapTargets) {
-      for (const check of [{ dragged: draggedBounds.centerY, target: target.centerY }, { dragged: draggedBounds.top, target: target.top }, { dragged: draggedBounds.bottom, target: target.bottom }, { dragged: draggedBounds.top, target: target.bottom }, { dragged: draggedBounds.bottom, target: target.top }]) {
-        if (Math.abs(check.dragged - check.target) < SNAP_THRESHOLD) {
-          snapDy = check.dragged - check.target;
-          newGuides.push({ x1: 0, y1: check.target, x2: artboardSize.width, y2: check.target });
-          ySnapped = true; break;
+    
+    let bestYSnap = { diff: Infinity, targetValue: 0 };
+    for (const target of allTargets) {
+        for (const draggedEdge of ['top', 'centerY', 'bottom'] as const) {
+            for (const targetEdge of ['top', 'centerY', 'bottom'] as const) {
+                const diff = Math.abs(draggedBounds[draggedEdge] - target[targetEdge]);
+                if (diff < SNAP_THRESHOLD && diff < bestYSnap.diff) {
+                    bestYSnap = { diff, targetValue: target[targetEdge] };
+                    snapDy = draggedBounds[draggedEdge] - target[targetEdge];
+                }
+            }
         }
-      }
-      if (ySnapped) break;
     }
+
+    if (bestXSnap.diff !== Infinity) {
+        newGuides.push({ x1: bestXSnap.targetValue, y1: 0, x2: bestXSnap.targetValue, y2: artboardSize.height });
+    }
+    if (bestYSnap.diff !== Infinity) {
+        newGuides.push({ x1: 0, y1: bestYSnap.targetValue, x2: artboardSize.width, y2: bestYSnap.targetValue });
+    }
+    
     setGuides(newGuides);
-    const finalDx = dx - snapDx, finalDy = dy - snapDy;
+
+    const finalDx = dx - snapDx;
+    const finalDy = dy - snapDy;
+
     setLiveElements(currentLiveElements => {
         if (!currentLiveElements) return currentLiveElements;
         let updatedElements = currentLiveElements;
@@ -870,12 +895,29 @@ export const useDesignState = () => {
         e.preventDefault();
         if (clipboardRef.current.length === 0 || editingGroupId) return;
         const pasteOffset = 20;
-        const newElements: CanvasElement[] = clipboardRef.current.map(el => ({
-          ...el,
-          id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          x: el.x + pasteOffset,
-          y: el.y + pasteOffset,
-        } as CanvasElement));
+        // FIX: Use a switch statement to help TypeScript correctly infer the type of the spread element (`el`),
+        // which resolves an issue with discriminated unions.
+        const newElements: CanvasElement[] = clipboardRef.current.map(el => {
+          const newElementProps = {
+            id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            x: el.x + pasteOffset,
+            y: el.y + pasteOffset,
+          };
+          switch (el.type) {
+            case 'text':
+              return { ...el, ...newElementProps };
+            case 'image':
+              return { ...el, ...newElementProps };
+            case 'shape':
+              return { ...el, ...newElementProps };
+            case 'group':
+              return { ...el, ...newElementProps };
+            default: {
+              const exhaustiveCheck: never = el;
+              throw new Error(`Unhandled element type on paste: ${(exhaustiveCheck as any).type}`);
+            }
+          }
+        });
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
         clipboardRef.current = newElements.map(({ id, ...rest }) => rest);
@@ -886,12 +928,28 @@ export const useDesignState = () => {
         const duplicateOffset = 20;
         const elementsToDuplicate = elements.filter(el => selectedElementIds.includes(el.id));
         if (elementsToDuplicate.some(el => el.locked)) return;
-        const newElements: CanvasElement[] = elementsToDuplicate.map(el => ({
-          ...el,
-          id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          x: el.x + duplicateOffset,
-          y: el.y + duplicateOffset,
-        }));
+        // FIX: Use a switch statement to ensure type safety with discriminated unions when duplicating elements.
+        const newElements: CanvasElement[] = elementsToDuplicate.map(el => {
+          const newElementProps = {
+            id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            x: el.x + duplicateOffset,
+            y: el.y + duplicateOffset,
+          };
+          switch (el.type) {
+            case 'text':
+              return { ...el, ...newElementProps };
+            case 'image':
+              return { ...el, ...newElementProps };
+            case 'shape':
+              return { ...el, ...newElementProps };
+            case 'group':
+              return { ...el, ...newElementProps };
+            default: {
+                const exhaustiveCheck: never = el;
+                throw new Error(`Unhandled element type on duplicate: ${(exhaustiveCheck as any).type}`);
+            }
+          }
+        });
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
       }
