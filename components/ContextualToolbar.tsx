@@ -8,6 +8,7 @@ interface ContextualToolbarProps {
   onReorder: (direction: 'forward' | 'backward' | 'front' | 'back') => void;
   onGroup: () => void;
   onUngroup: () => void;
+  onAlignOrDistribute: (operation: 'align-left' | 'align-center' | 'align-right' | 'align-top' | 'align-middle' | 'align-bottom' | 'distribute-horizontal' | 'distribute-vertical') => void;
   elementIndex: number;
   totalElements: number;
 }
@@ -18,7 +19,6 @@ const TEXT_ALIGN_OPTIONS: { value: 'left' | 'center' | 'right', label: string, i
     { value: 'center', label: 'Align Center', icon: '📄' },
     { value: 'right', label: 'Align Right', icon: '📄' }
 ];
-
 
 const ToolLabel: React.FC<{ children: React.ReactNode, htmlFor?: string }> = ({ children, htmlFor }) => (
   <label htmlFor={htmlFor} className="text-xs text-gray-400 mr-2 font-semibold uppercase">{children}</label>
@@ -63,8 +63,25 @@ const ColorInputWithNone: React.FC<{
   );
 };
 
+const AlignButton: React.FC<{
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}> = ({ label, onClick, disabled = false, children }) => (
+  <button
+    onClick={onClick}
+    title={label}
+    aria-label={label}
+    disabled={disabled}
+    className="p-2 rounded transition-colors hover:bg-gray-600 disabled:text-gray-500 disabled:cursor-not-allowed"
+  >
+    {children}
+  </button>
+);
 
-const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onReorder, onGroup, onUngroup, elementIndex, totalElements }) => {
+
+const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementIds, elements, onUpdateElements, onReorder, onGroup, onUngroup, onAlignOrDistribute, elementIndex, totalElements }) => {
   const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +113,6 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
 
   const handleUpdate = (key: keyof TextElement | keyof ImageElement | keyof ShapeElement | 'opacity', value: any) => {
     let parsedValue = value;
-    // FIX: Changed type of numberKeys to string[] to allow for keys specific to certain element types.
     const numberKeys: string[] = ['fontSize', 'rotation', 'lineHeight', 'strokeWidth', 'sides', 'points', 'innerRadiusRatio', 'opacity'];
     if (numberKeys.includes(key)) {
         if (typeof value === 'string' && value === '') {
@@ -421,6 +437,51 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
         </div>
     );
   };
+  
+  const renderAlignmentTools = () => {
+    const isAnyLocked = useMemo(() => selectedElements.some(el => el.locked), [selectedElements]);
+    const canDistribute = selectedElements.length > 2;
+    return (
+        <div className="flex items-center space-x-2 h-full animate-fade-in" role="toolbar" aria-label="Alignment Toolbar">
+            <p className="text-sm text-gray-300 pr-2">{selectedElements.length} items selected</p>
+            <div className="h-6 w-px bg-gray-600"></div>
+
+            <ToolWrapper>
+                <div className="flex bg-gray-700 rounded">
+                    <AlignButton label="Align Left" onClick={() => onAlignOrDistribute('align-left')} disabled={isAnyLocked}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h2v14H3V3zm4 2h8v3H7V5zm0 7h5v3H7v-3z"/></svg>
+                    </AlignButton>
+                    <AlignButton label="Align Center" onClick={() => onAlignOrDistribute('align-center')} disabled={isAnyLocked}>
+                       <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M9 3h2v14H9V3zm-2.5-1h8v3h-8V2zm-1.5 7h11v3h-11v-3zm2 5h7v3h-7v-3z" transform="translate(0, 1) rotate(90 10 10) translate(0, -1)" /></svg>
+                    </AlignButton>
+                    <AlignButton label="Align Right" onClick={() => onAlignOrDistribute('align-right')} disabled={isAnyLocked}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M15 3h2v14h-2V3zm-4 2h-8v3h8V5zm0 7h-5v3h5v-3z"/></svg>
+                    </AlignButton>
+                    <AlignButton label="Align Top" onClick={() => onAlignOrDistribute('align-top')} disabled={isAnyLocked}>
+                       <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 3h14v2H3V3zm2 4h3v8H5V7zm7 0h3v5h-3V7z"/></svg>
+                    </AlignButton>
+                     <AlignButton label="Align Middle" onClick={() => onAlignOrDistribute('align-middle')} disabled={isAnyLocked}>
+                       <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 9h14v2H3V9zM5 4h3v4H5V4zm7 5h3v4h-3V9z"/></svg>
+                    </AlignButton>
+                    <AlignButton label="Align Bottom" onClick={() => onAlignOrDistribute('align-bottom')} disabled={isAnyLocked}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 15h14v2H3v-2zm2-2h3V5H5v8zm7 0h3V8h-3v5z"/></svg>
+                    </AlignButton>
+                </div>
+            </ToolWrapper>
+             <div className="h-6 w-px bg-gray-600"></div>
+            <ToolWrapper>
+                 <div className="flex bg-gray-700 rounded">
+                    <AlignButton label="Distribute Horizontally" onClick={() => onAlignOrDistribute('distribute-horizontal')} disabled={isAnyLocked || !canDistribute}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4h2v12H3V4zm5.5 2h3v8h-3V6zm5.5 0h3v8h-3V6zm5.5-2h2v12h-2V4z" transform="rotate(90 10 10)"/></svg>
+                    </AlignButton>
+                    <AlignButton label="Distribute Vertically" onClick={() => onAlignOrDistribute('distribute-vertical')} disabled={isAnyLocked || !canDistribute}>
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M4 3h12v2H4V3zm2 5.5h8v3H6v-3zm0 5.5h8v3H6v-3zm-2 5.5h12v2H4v-2z" transform="rotate(90 10 10)"/></svg>
+                    </AlignButton>
+                 </div>
+            </ToolWrapper>
+        </div>
+    );
+  };
 
   const renderArrangeTools = () => {
     const isAtFront = singleSelectedElement ? elementIndex === totalElements - 1 : false;
@@ -484,21 +545,13 @@ const ContextualToolbar: React.FC<ContextualToolbarProps> = ({ selectedElementId
     );
   }
   
-  const renderMultiSelectTools = () => {
-      return (
-        <div className="flex items-center space-x-4 h-full animate-fade-in">
-            <p className="text-sm text-gray-300">{selectedElements.length} items selected ({selectionType})</p>
-        </div>
-      )
-  }
-
   return (
     <div className="w-full flex justify-center items-center px-4 space-x-6">
-      {selectionType === 'text' && renderTextTools()}
-      {selectionType === 'image' && renderImageTools()}
-      {selectionType === 'shape' && renderShapeTools()}
-      {selectionType === 'mixed' && renderMultiSelectTools()}
-      {selectionType === 'group' && <p className="text-sm text-gray-300">Group Selected</p>}
+      {selectedElements.length === 1 && selectionType === 'text' && renderTextTools()}
+      {selectedElements.length === 1 && selectionType === 'image' && renderImageTools()}
+      {selectedElements.length === 1 && selectionType === 'shape' && renderShapeTools()}
+      {selectedElements.length === 1 && singleSelectedElement?.type === 'group' && <p className="text-sm text-gray-300">Group Selected</p>}
+      {selectedElements.length > 1 && renderAlignmentTools()}
       {selectedElements.length > 0 && renderArrangeTools()}
     </div>
   );

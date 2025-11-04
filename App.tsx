@@ -62,6 +62,7 @@ const App: React.FC = () => {
     handleToggleLock,
     handleUpdateSelectedElements,
     handleReorderElement,
+    handleAlignOrDistribute,
     toggleDetailsPanel,
     toggleRightPanel,
   } = useDesignState();
@@ -84,6 +85,7 @@ const App: React.FC = () => {
               onReorder={(direction) => handleReorderElement(selectedElementIds, direction)}
               onGroup={handleGroup}
               onUngroup={handleUngroup}
+              onAlignOrDistribute={handleAlignOrDistribute}
               elementIndex={singleSelectedElementIndex}
               totalElements={elementsToRender.length}
             />
@@ -232,7 +234,6 @@ const App: React.FC = () => {
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}
                 onGroup={handleGroup}
-                // FIX: Pass handleUngroup to the onUngroup prop. The variable 'onUngroup' was not defined.
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
                 onToggleLock={handleToggleLock}

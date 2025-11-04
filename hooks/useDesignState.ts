@@ -700,6 +700,96 @@ export const useDesignState = () => {
       }
     };
 
+    const handleAlignOrDistribute = useCallback((operation: 'align-left' | 'align-center' | 'align-right' | 'align-top' | 'align-middle' | 'align-bottom' | 'distribute-horizontal' | 'distribute-vertical') => {
+        const selectedElements = elementsOnCanvas.filter(el => selectedElementIds.includes(el.id) && !el.locked);
+
+        if (selectedElements.length < 2) return;
+
+        const updates = new Map<string, Partial<CanvasElement>>();
+
+        const boundingBox = selectedElements.reduce((acc, el) => ({
+            minX: Math.min(acc.minX, el.x),
+            minY: Math.min(acc.minY, el.y),
+            maxX: Math.max(acc.maxX, el.x + el.width),
+            maxY: Math.max(acc.maxY, el.y + el.height),
+        }), { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+
+        const centerX = boundingBox.minX + (boundingBox.maxX - boundingBox.minX) / 2;
+        const middleY = boundingBox.minY + (boundingBox.maxY - boundingBox.minY) / 2;
+
+        switch (operation) {
+            case 'align-left':
+                selectedElements.forEach(el => updates.set(el.id, { x: boundingBox.minX }));
+                break;
+            case 'align-center':
+                selectedElements.forEach(el => updates.set(el.id, { x: centerX - el.width / 2 }));
+                break;
+            case 'align-right':
+                selectedElements.forEach(el => updates.set(el.id, { x: boundingBox.maxX - el.width }));
+                break;
+            case 'align-top':
+                selectedElements.forEach(el => updates.set(el.id, { y: boundingBox.minY }));
+                break;
+            case 'align-middle':
+                selectedElements.forEach(el => updates.set(el.id, { y: middleY - el.height / 2 }));
+                break;
+            case 'align-bottom':
+                selectedElements.forEach(el => updates.set(el.id, { y: boundingBox.maxY - el.height }));
+                break;
+            case 'distribute-horizontal': {
+                if (selectedElements.length < 3) break;
+                const sorted = [...selectedElements].sort((a, b) => a.x - b.x);
+                const totalWidth = sorted.reduce((sum, el) => sum + el.width, 0);
+                const totalSpace = (boundingBox.maxX - boundingBox.minX) - totalWidth;
+                const spacing = totalSpace / (sorted.length - 1);
+                let currentX = boundingBox.minX;
+                sorted.forEach(el => {
+                    updates.set(el.id, { x: currentX });
+                    currentX += el.width + spacing;
+                });
+                break;
+            }
+            case 'distribute-vertical': {
+                if (selectedElements.length < 3) break;
+                const sorted = [...selectedElements].sort((a, b) => a.y - b.y);
+                const totalHeight = sorted.reduce((sum, el) => sum + el.height, 0);
+                const totalSpace = (boundingBox.maxY - boundingBox.minY) - totalHeight;
+                const spacing = totalSpace / (sorted.length - 1);
+                let currentY = boundingBox.minY;
+                sorted.forEach(el => {
+                    updates.set(el.id, { y: currentY });
+                    currentY += el.height + spacing;
+                });
+                break;
+            }
+        }
+
+        if (updates.size > 0) {
+            setElements(prevElements => {
+                const applyUpdatesRecursively = (els: CanvasElement[], groupContext: GroupElement | null): CanvasElement[] => {
+                    return els.map(el => {
+                        let newEl = { ...el };
+                        if (updates.has(el.id)) {
+                            const update = { ...updates.get(el.id)! };
+                            if (groupContext) {
+                                if (update.x !== undefined) update.x -= groupContext.x;
+                                if (update.y !== undefined) update.y -= groupContext.y;
+                            }
+                            newEl = { ...newEl, ...update };
+                        }
+
+                        if (newEl.type === 'group' && !updates.has(el.id)) {
+                           (newEl as GroupElement).elements = applyUpdatesRecursively((newEl as GroupElement).elements, newEl as GroupElement);
+                        }
+                        return newEl;
+                    });
+                };
+                return applyUpdatesRecursively(prevElements, activeGroup ?? null);
+            });
+        }
+
+    }, [selectedElementIds, elementsOnCanvas, setElements, activeGroup]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
@@ -847,10 +937,16 @@ export const useDesignState = () => {
 
     const convertChildrenToTemplateFormat = (els: CanvasElement[]): any[] => {
       return els.map((childEl: CanvasElement) => {
-        // FIX: Grouping these cases resolves the type-checking issue with the exhaustiveness check.
+// FIX: Separated switch cases to ensure correct type inference for `...rest`.
         switch (childEl.type) {
-          case 'text':
-          case 'image':
+          case 'text': {
+            const { id, ...rest } = childEl;
+            return rest;
+          }
+          case 'image': {
+            const { id, ...rest } = childEl;
+            return rest;
+          }
           case 'shape': {
             const { id, ...rest } = childEl;
             return rest;
@@ -870,9 +966,16 @@ export const useDesignState = () => {
     const templateElements = elements.map(el => {
       const xOffset = (el.x + el.width / 2) - centerX;
       const yOffset = (el.y + el.height / 2) - centerY;
+// FIX: Separated switch cases to ensure correct type inference for `...rest` on discriminated unions.
       switch (el.type) {
-        case 'text':
-        case 'image':
+        case 'text': {
+          const { id, x, y, ...rest } = el;
+          return { ...rest, xOffset, yOffset };
+        }
+        case 'image': {
+          const { id, x, y, ...rest } = el;
+          return { ...rest, xOffset, yOffset };
+        }
         case 'shape': {
           const { id, x, y, ...rest } = el;
           return { ...rest, xOffset, yOffset };
@@ -1002,6 +1105,7 @@ export const useDesignState = () => {
     handleToggleLock,
     handleUpdateSelectedElements,
     handleReorderElement,
+    handleAlignOrDistribute,
     toggleDetailsPanel,
     toggleRightPanel,
   };
