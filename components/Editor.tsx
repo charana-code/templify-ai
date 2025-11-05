@@ -11,7 +11,7 @@ interface EditorProps {
   zoom: number;
   editingGroup: GroupElement | null;
   onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
-  onAddTemplate: (templateElements: any[]) => void;
+  onAddTemplate: (templateElements: any[], options?: { group?: boolean }) => void;
   onUpdateElement: (id: string, updates: Partial<CanvasElement>) => void;
   onElementMouseDown: (id: string, e: React.MouseEvent) => void;
   onResizeStart: (id: string, direction: string, e: React.MouseEvent) => void;
@@ -52,7 +52,7 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
     const y = (e.clientY - rect.top) / zoom;
     
     if (data.type === 'template') {
-        onAddTemplate(data.elements);
+        onAddTemplate(data.elements, { group: data.group });
         return;
     }
 

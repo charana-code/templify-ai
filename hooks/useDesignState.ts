@@ -302,7 +302,7 @@ export const useDesignState = () => {
     setElements((prev) => [...prev, newElement]);
   }, [setElements]);
 
-  const handleAddTemplate = useCallback((templateElements: any[]) => {
+  const handleAddTemplate = useCallback((templateElements: any[], options?: { group?: boolean }) => {
     if (!editorRef.current || templateElements.length === 0) return;
 
     const rect = editorRef.current.getBoundingClientRect();
@@ -313,6 +313,8 @@ export const useDesignState = () => {
     const padding = 40;
 
     const isUserTemplate = typeof templateElements[0]?.x === 'number';
+
+    let newElements: CanvasElement[];
 
     if (isUserTemplate) {
         // --- Logic for user-saved templates with absolute x, y ---
@@ -336,7 +338,7 @@ export const useDesignState = () => {
         const newTemplateX = canvasCenterX - newTemplateWidth / 2;
         const newTemplateY = canvasCenterY - newTemplateHeight / 2;
 
-        const newElements = templateElements.map((templateEl, index) => {
+        newElements = templateElements.map((templateEl, index) => {
             const relativeX = templateEl.x - minX;
             const relativeY = templateEl.y - minY;
             
@@ -359,8 +361,6 @@ export const useDesignState = () => {
 
             return newElement as CanvasElement;
         });
-        
-        setElements(prev => [...prev, ...newElements]);
 
     } else {
         // --- Existing logic for pre-defined templates with xOffset, yOffset ---
@@ -379,7 +379,7 @@ export const useDesignState = () => {
         const availableHeight = canvasHeight - padding;
         const scaleFactor = Math.min(1, availableWidth / templateWidth, availableHeight / templateHeight);
     
-        const newElements: CanvasElement[] = templateElements.map((templateEl, index) => {
+        newElements = templateElements.map((templateEl, index) => {
             const { yOffset = 0, xOffset = 0, ...rest } = templateEl;
             const scaledWidth = rest.width * scaleFactor;
             const scaledHeight = rest.height * scaleFactor;
@@ -401,7 +401,29 @@ export const useDesignState = () => {
             }
             return element as CanvasElement;
         });
+    }
+    
+    if (options?.group && newElements.length > 0) {
+        const minX = Math.min(...newElements.map(el => el.x));
+        const minY = Math.min(...newElements.map(el => el.y));
+        const maxX = Math.max(...newElements.map(el => el.x + el.width));
+        const maxY = Math.max(...newElements.map(el => el.y + el.height));
+        
+        const group: GroupElement = {
+            id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'group',
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY,
+            rotation: 0,
+            elements: newElements.map(el => ({ ...el, x: el.x - minX, y: el.y - minY }))
+        };
+        setElements(prev => [...prev, group]);
+        setSelectedElementIds([group.id]);
+    } else {
         setElements(prev => [...prev, ...newElements]);
+        setSelectedElementIds(newElements.map(el => el.id));
     }
 }, [setElements, zoom]);
 

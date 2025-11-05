@@ -11,16 +11,20 @@ const DraggableTextPreset: React.FC<{
     e.dataTransfer.setData('application/json', JSON.stringify({ type: 'element', element }));
   };
 
+  // Use a consistent size for the panel UI, while preserving the font family and weight as a preview.
+  const previewStyle: React.CSSProperties = {
+    fontSize: '18px', // A reasonable, fixed size for the panel
+    fontWeight: element.fontWeight,
+    fontFamily: element.fontFamily,
+    textAlign: 'left',
+  };
+
   return (
     <div
       draggable
       onDragStart={handleDragStart}
       className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-grab transition-colors text-center"
-      style={{
-        fontSize: `${element.fontSize}px`,
-        fontWeight: element.fontWeight,
-        fontFamily: element.fontFamily,
-      }}
+      style={previewStyle}
     >
       {label}
     </div>
@@ -65,72 +69,139 @@ const DraggableShapePreset: React.FC<{
   );
 };
 
+const DraggableTextGroupLayout: React.FC<{
+  elements: any[];
+  children: React.ReactNode;
+}> = ({ elements, children }) => {
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'template', elements, group: true }));
+  };
 
-const TextToolPanel = () => (
-  <div className="p-4 space-y-4">
-    <h3 className="text-lg font-bold text-gray-400">Add Text</h3>
-    <DraggableTextPreset
-      label="Add a heading"
-      element={{
-        type: 'text',
-        content: 'Heading',
-        width: 350,
-        height: 70,
-        fontSize: 48,
-        fontWeight: 'bold',
-        fontStyle: 'normal',
-        color: '#FFFFFF',
-        fontFamily: 'Arial',
-        textAlign: 'center',
-        lineHeight: 1.2,
-        letterSpacing: 0,
-        textTransform: 'none',
-        underline: false,
-        strikethrough: false,
-      }}
-    />
-    <DraggableTextPreset
-      label="Add a subheading"
-      element={{
-        type: 'text',
-        content: 'Subheading',
-        width: 300,
-        height: 50,
-        fontSize: 32,
-        fontWeight: 'normal',
-        fontStyle: 'normal',
-        color: '#CCCCCC',
-        fontFamily: 'Arial',
-        textAlign: 'center',
-        lineHeight: 1.3,
-        letterSpacing: 0,
-        textTransform: 'none',
-        underline: false,
-        strikethrough: false,
-      }}
-    />
-    <DraggableTextPreset
-      label="Add body text"
-      element={{
-        type: 'text',
-        content: 'Some body text for a paragraph. You can edit this content by double-clicking on the canvas.',
-        width: 250,
-        height: 120,
-        fontSize: 16,
-        fontWeight: 'normal',
-        fontStyle: 'normal',
-        color: '#FFFFFF',
-        fontFamily: 'Arial',
-        textAlign: 'left',
-        lineHeight: 1.5,
-        letterSpacing: 0,
-        textTransform: 'none',
-        underline: false,
-        strikethrough: false,
-      }}
-    />
-  </div>
-);
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      className="p-4 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-grab transition-colors"
+    >
+      {children}
+    </div>
+  );
+};
+
+
+const TextToolPanel = () => {
+  const titleAndDescriptionTemplate = [
+    { 
+      type: 'text', 
+      content: 'Title', 
+      fontSize: 32, 
+      fontWeight: 'bold', 
+      fontStyle: 'normal', 
+      width: 300, 
+      height: 50, 
+      color: '#000000', 
+      fontFamily: 'Arial', 
+      textAlign: 'left' as const, 
+      lineHeight: 1.2, 
+      letterSpacing: 0, 
+      textTransform: 'none' as const,
+      underline: false,
+      strikethrough: false,
+    },
+    { 
+      type: 'text', 
+      content: 'Your descriptive text goes here. Double click to edit this paragraph and add your own content.', 
+      fontSize: 16, 
+      fontWeight: 'normal', 
+      fontStyle: 'normal', 
+      width: 300, 
+      height: 90, 
+      color: '#333333', 
+      fontFamily: 'Arial', 
+      textAlign: 'left' as const, 
+      yOffset: 60, 
+      lineHeight: 1.5, 
+      letterSpacing: 0, 
+      textTransform: 'none' as const,
+      underline: false,
+      strikethrough: false,
+    },
+  ];
+
+  return (
+    <div className="p-4 space-y-4">
+      <h3 className="text-lg font-bold text-gray-400">Add Text</h3>
+      <DraggableTextPreset
+        label="Add a heading"
+        element={{
+          type: 'text',
+          content: 'Heading',
+          width: 350,
+          height: 70,
+          fontSize: 48,
+          fontWeight: 'bold',
+          fontStyle: 'normal',
+          color: '#000000',
+          fontFamily: 'Arial',
+          textAlign: 'left',
+          lineHeight: 1.2,
+          letterSpacing: 0,
+          textTransform: 'none',
+          underline: false,
+          strikethrough: false,
+        }}
+      />
+      <DraggableTextPreset
+        label="Add a subheading"
+        element={{
+          type: 'text',
+          content: 'Subheading',
+          width: 300,
+          height: 50,
+          fontSize: 32,
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          color: '#333333',
+          fontFamily: 'Arial',
+          textAlign: 'left',
+          lineHeight: 1.3,
+          letterSpacing: 0,
+          textTransform: 'none',
+          underline: false,
+          strikethrough: false,
+        }}
+      />
+      <DraggableTextPreset
+        label="Add body text"
+        element={{
+          type: 'text',
+          content: 'Some body text for a paragraph. You can edit this content by double-clicking on the canvas.',
+          width: 250,
+          height: 120,
+          fontSize: 16,
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          color: '#333333',
+          fontFamily: 'Arial',
+          textAlign: 'left',
+          lineHeight: 1.5,
+          letterSpacing: 0,
+          textTransform: 'none',
+          underline: false,
+          strikethrough: false,
+        }}
+      />
+      <DraggableTextGroupLayout elements={titleAndDescriptionTemplate}>
+        <div className="text-left">
+          <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'Arial' }}>Title & Description</div>
+          <div style={{ fontSize: '12px', fontFamily: 'Arial', marginTop: '4px', color: '#a0a0a0' }}>
+            A heading with body text below.
+          </div>
+        </div>
+      </DraggableTextGroupLayout>
+    </div>
+  );
+};
 
 const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id'>) => void; }> = ({ onAddElement }) => {
     const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -375,8 +446,8 @@ const ShapesToolPanel = () => (
 
 const TemplatesPanel: React.FC<{ customTemplates: { name: string, elements: any[] }[] }> = ({ customTemplates }) => {
     const titleSubtitleTemplate = [
-        { type: 'text', content: 'Main Title', fontSize: 48, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 60, color: '#FFFFFF', fontFamily: 'Arial', lineHeight: 1.2, letterSpacing: 0, textTransform: 'none' },
-        { type: 'text', content: 'Supporting subtitle text', fontSize: 24, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 40, color: '#CCCCCC', fontFamily: 'Arial', yOffset: 70, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none' },
+        { type: 'text', content: 'Main Title', fontSize: 48, fontWeight: 'bold', fontStyle: 'normal', width: 400, height: 60, color: '#FFFFFF', fontFamily: 'Arial', lineHeight: 1.2, letterSpacing: 0, textTransform: 'none', textAlign: 'left' },
+        { type: 'text', content: 'Supporting subtitle text', fontSize: 24, fontWeight: 'normal', fontStyle: 'normal', width: 400, height: 40, color: '#CCCCCC', fontFamily: 'Arial', yOffset: 70, lineHeight: 1.4, letterSpacing: 0, textTransform: 'none', textAlign: 'left' },
     ];
 
     const eventProgramTemplate = [
