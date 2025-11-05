@@ -303,54 +303,108 @@ export const useDesignState = () => {
   }, [setElements]);
 
   const handleAddTemplate = useCallback((templateElements: any[]) => {
-    if (!editorRef.current) return;
+    if (!editorRef.current || templateElements.length === 0) return;
 
     const rect = editorRef.current.getBoundingClientRect();
     const canvasWidth = rect.width / zoom;
     const canvasHeight = rect.height / zoom;
     const canvasCenterX = canvasWidth / 2;
     const canvasCenterY = canvasHeight / 2;
-
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    templateElements.forEach(el => {
-      const { width, height, xOffset = 0, yOffset = 0 } = el;
-      minX = Math.min(minX, xOffset - width / 2);
-      maxX = Math.max(maxX, xOffset + width / 2);
-      minY = Math.min(minY, yOffset - height / 2);
-      maxY = Math.max(maxY, yOffset + height / 2);
-    });
-
-    const templateWidth = maxX - minX;
-    const templateHeight = maxY - minY;
     const padding = 40;
-    const availableWidth = canvasWidth - padding;
-    const availableHeight = canvasHeight - padding;
-    const scaleFactor = Math.min(1, availableWidth / templateWidth, availableHeight / templateHeight);
 
-    const newElements: CanvasElement[] = templateElements.map((templateEl, index) => {
-        const { yOffset = 0, xOffset = 0, ...rest } = templateEl;
-        const scaledWidth = rest.width * scaleFactor;
-        const scaledHeight = rest.height * scaleFactor;
-        const scaledXOffset = xOffset * scaleFactor;
-        const scaledYOffset = yOffset * scaleFactor;
+    const isUserTemplate = typeof templateElements[0]?.x === 'number';
+
+    if (isUserTemplate) {
+        // --- Logic for user-saved templates with absolute x, y ---
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        templateElements.forEach(el => {
+            minX = Math.min(minX, el.x);
+            maxX = Math.max(maxX, el.x + el.width);
+            minY = Math.min(minY, el.y);
+            maxY = Math.max(maxY, el.y + el.height);
+        });
+
+        const templateWidth = maxX - minX;
+        const templateHeight = maxY - minY;
+
+        const availableWidth = canvasWidth - padding;
+        const availableHeight = canvasHeight - padding;
+        const scaleFactor = Math.min(1, availableWidth / templateWidth, availableHeight / templateHeight);
+
+        const newTemplateWidth = templateWidth * scaleFactor;
+        const newTemplateHeight = templateHeight * scaleFactor;
+        const newTemplateX = canvasCenterX - newTemplateWidth / 2;
+        const newTemplateY = canvasCenterY - newTemplateHeight / 2;
+
+        const newElements = templateElements.map((templateEl, index) => {
+            const relativeX = templateEl.x - minX;
+            const relativeY = templateEl.y - minY;
+            
+            const scaledWidth = templateEl.width * scaleFactor;
+            const scaledHeight = templateEl.height * scaleFactor;
+
+            const newElement: Partial<CanvasElement> = {
+                ...templateEl,
+                id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+                width: scaledWidth,
+                height: scaledHeight,
+                x: newTemplateX + (relativeX * scaleFactor),
+                y: newTemplateY + (relativeY * scaleFactor),
+                rotation: templateEl.rotation || 0,
+            };
+
+            if (newElement.type === 'text' && templateEl.fontSize) {
+                (newElement as TextElement).fontSize = templateEl.fontSize * scaleFactor;
+            }
+
+            return newElement as CanvasElement;
+        });
         
-        const element: Partial<CanvasElement> = {
-            ...rest,
-            id: `el_${Date.now()}_${index}`,
-            width: scaledWidth,
-            height: scaledHeight,
-            x: canvasCenterX + scaledXOffset - scaledWidth / 2,
-            y: canvasCenterY + scaledYOffset - scaledHeight / 2,
-            rotation: 0,
-        };
-        if (element.type === 'text') {
-            (element as TextElement).fontSize = (rest.fontSize || 16) * scaleFactor;
-            (element as TextElement).textAlign = rest.textAlign || 'center';
-        }
-        return element as CanvasElement;
-    });
-    setElements(prev => [...prev, ...newElements]);
-  }, [setElements, zoom]);
+        setElements(prev => [...prev, ...newElements]);
+
+    } else {
+        // --- Existing logic for pre-defined templates with xOffset, yOffset ---
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        templateElements.forEach(el => {
+          const { width, height, xOffset = 0, yOffset = 0 } = el;
+          minX = Math.min(minX, xOffset - width / 2);
+          maxX = Math.max(maxX, xOffset + width / 2);
+          minY = Math.min(minY, yOffset - height / 2);
+          maxY = Math.max(maxY, yOffset + height / 2);
+        });
+    
+        const templateWidth = maxX - minX;
+        const templateHeight = maxY - minY;
+        const availableWidth = canvasWidth - padding;
+        const availableHeight = canvasHeight - padding;
+        const scaleFactor = Math.min(1, availableWidth / templateWidth, availableHeight / templateHeight);
+    
+        const newElements: CanvasElement[] = templateElements.map((templateEl, index) => {
+            const { yOffset = 0, xOffset = 0, ...rest } = templateEl;
+            const scaledWidth = rest.width * scaleFactor;
+            const scaledHeight = rest.height * scaleFactor;
+            const scaledXOffset = xOffset * scaleFactor;
+            const scaledYOffset = yOffset * scaleFactor;
+            
+            const element: Partial<CanvasElement> = {
+                ...rest,
+                id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${index}`,
+                width: scaledWidth,
+                height: scaledHeight,
+                x: canvasCenterX + scaledXOffset - scaledWidth / 2,
+                y: canvasCenterY + scaledYOffset - scaledHeight / 2,
+                rotation: 0,
+            };
+            if (element.type === 'text') {
+                (element as TextElement).fontSize = (rest.fontSize || 16) * scaleFactor;
+                (element as TextElement).textAlign = rest.textAlign || 'center';
+            }
+            return element as CanvasElement;
+        });
+        setElements(prev => [...prev, ...newElements]);
+    }
+}, [setElements, zoom]);
+
 
   const handleUpdateElement = useCallback((id: string, updates: Partial<CanvasElement>) => {
     const updater = makeElementUpdater(id, updates, activeGroup);
@@ -551,6 +605,7 @@ export const useDesignState = () => {
   }, [zoom, elements, artboardSize, elementsOnCanvas, activeGroup]);
 
   const handleDocumentMouseUp = useCallback(() => {
+    document.body.style.userSelect = '';
     document.removeEventListener('mousemove', handleDocumentMouseMove);
     document.removeEventListener('mouseup', handleDocumentMouseUp);
     if (dragInfo.current) {
@@ -594,6 +649,7 @@ export const useDesignState = () => {
     dragInfo.current = { startX: e.clientX, startY: e.clientY, elementsStart: elementsToDrag.map(el => ({ id: el.id, x: el.x, y: el.y })) };
     setDraggingElementId(id);
     setLiveElements(elements);
+    document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', handleDocumentMouseMove);
     document.addEventListener('mouseup', handleDocumentMouseUp);
   }, [elements, selectedElementIds, handleDocumentMouseMove, handleDocumentMouseUp, elementsOnCanvas]);
@@ -698,6 +754,7 @@ export const useDesignState = () => {
   }, [zoom, editingGroupId]);
 
   const handleDocumentMouseUpForResize = useCallback(() => {
+      document.body.style.userSelect = '';
       setLiveElements(currentLiveElements => {
           if (currentLiveElements) setElements(currentLiveElements);
           return null;
@@ -713,6 +770,7 @@ export const useDesignState = () => {
     e.stopPropagation();
     resizeInfo.current = { startX: e.clientX, startY: e.clientY, elementStart: { x: element.x, y: element.y, width: element.width, height: element.height }, element, direction };
     setLiveElements(elements);
+    document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', handleDocumentMouseMoveForResize);
     document.addEventListener('mouseup', handleDocumentMouseUpForResize);
   }, [elements, elementsOnCanvas, handleDocumentMouseMoveForResize, handleDocumentMouseUpForResize]);
@@ -742,6 +800,7 @@ export const useDesignState = () => {
   }, [zoom, activeGroup]);
 
   const handleDocumentMouseUpForRotation = useCallback(() => {
+      document.body.style.userSelect = '';
       setLiveElements(currentLiveElements => {
           if (currentLiveElements) setElements(currentLiveElements);
           return null;
@@ -772,6 +831,7 @@ export const useDesignState = () => {
     };
     
     setLiveElements(elements);
+    document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', handleDocumentMouseMoveForRotation);
     document.addEventListener('mouseup', handleDocumentMouseUpForRotation);
   }, [elements, elementsOnCanvas, zoom, handleDocumentMouseMoveForRotation, handleDocumentMouseUpForRotation]);
@@ -801,6 +861,9 @@ export const useDesignState = () => {
         
         const mainContainer = mainContainerRef.current;
         if (!mainContainer) return;
+
+        document.body.style.userSelect = 'none';
+        
         const mainRect = mainContainer.getBoundingClientRect();
 
         const startX = e.clientX - mainRect.left;
@@ -817,6 +880,7 @@ export const useDesignState = () => {
             });
         };
         const handleMouseUp = (upE: MouseEvent) => {
+            document.body.style.userSelect = '';
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
             setSelectionRect(currentRect => {
