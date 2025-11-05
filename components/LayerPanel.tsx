@@ -9,13 +9,15 @@ interface LayerItemProps {
   onSelect: (id: string, shiftKey: boolean) => void;
   onReorder: (draggedId: string, targetId: string, position: 'before' | 'after') => void;
   onSetEditingGroupId: (id: string | null) => void;
+  onToggleVisibility: (id: string) => void;
 }
 
-const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementIds, onSelect, onReorder, onSetEditingGroupId }) => {
+const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementIds, onSelect, onReorder, onSetEditingGroupId, onToggleVisibility }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [dragOverPosition, setDragOverPosition] = useState<'top' | 'bottom' | null>(null);
 
   const isSelected = selectedElementIds.includes(element.id);
+  const isVisible = element.visible ?? true;
 
   const getElementInfo = (el: CanvasElement): { icon: string, name: string } => {
     switch (el.type) {
@@ -103,11 +105,32 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
         onDrop={handleDrop}
         className={`relative flex items-center p-2 text-sm text-gray-300 rounded-md cursor-pointer transition-colors ${
           isSelected ? 'bg-blue-800' : 'hover:bg-gray-700'
-        } ${element.locked ? 'opacity-60' : ''}`}
+        } ${element.locked ? 'opacity-60' : ''} ${!isVisible ? 'opacity-50' : ''}`}
         style={itemStyle}
       >
         {dragOverPosition === 'top' && <div style={{ ...dragIndicatorStyle, top: 0 }} />}
         
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                onToggleVisibility(element.id);
+            }}
+            className="mr-2 text-gray-500 hover:text-white"
+            title={isVisible ? 'Hide Layer' : 'Show Layer'}
+        >
+            {isVisible ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C3.732 4.943 9.522 3 10 3s6.268 1.943 9.542 7c-3.274 5.057-9.03 7-9.542 7S3.732 15.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                </svg>
+            ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.27 8.138 15.522 6.138 12.553 5.166l-1.42-1.42L3.707 2.293zM10 12a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    <path d="M2 10s3.273-5.057 7.542-7C13.727 4.943 18 10 18 10s-3.273 5.057-7.542 7C6.273 15.057 2 10 2 10zm10 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            )}
+        </button>
+
         {element.type === 'group' && (
           <button
             onClick={(e) => {
@@ -136,6 +159,7 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
               onSelect={onSelect}
               onReorder={onReorder}
               onSetEditingGroupId={onSetEditingGroupId}
+              onToggleVisibility={onToggleVisibility}
             />
           ))}
         </div>
@@ -156,6 +180,7 @@ interface LayerPanelProps {
   onUngroup: () => void;
   canUngroup: boolean;
   onToggleLock: (ids: string[]) => void;
+  onToggleVisibility: (ids: string[]) => void;
   onAddNewLayer: (color: string) => void;
   onUpdateElements: (updates: Partial<CanvasElement>) => void;
 }
@@ -172,6 +197,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   onUngroup,
   canUngroup,
   onToggleLock,
+  onToggleVisibility,
   onAddNewLayer,
   onUpdateElements,
 }) => {
@@ -270,78 +296,97 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                   className="p-2 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
                   title={isAnySelectedLocked ? 'Unlock Selected' : 'Lock Selected'}
               >
-                  {isAnySelectedLocked ? '🔒' : '🔓'}
+                {isAnySelectedLocked ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a5 5 0 00-5 5v1h1a1 1 0 011 1v3a1 1 0 01-1 1H5v1a2 2 0 002 2h6a2 2 0 002-2v-1h-1a1 1 0 01-1-1V9a1 1 0 011-1h1V7a5 5 0 00-5-5zM9 9v3h2V9H9z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                  </svg>
+                )}
               </button>
-              <div className="flex-grow flex items-center space-x-2">
-                  <label htmlFor="opacity-slider" className="text-sm text-gray-400">Opacity</label>
-                  <input
-                      id="opacity-slider"
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={commonOpacity}
-                      onChange={(e) => onUpdateElements({ opacity: parseInt(e.target.value, 10) / 100 })}
-                      disabled={selectedElementIds.length === 0}
-                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                  />
-                  <span className="text-sm w-10 text-right">{commonOpacity}%</span>
+              <div className="flex items-center space-x-2 flex-grow">
+                <label htmlFor="layer-opacity" className="text-xs text-gray-400">Opacity</label>
+                <input
+                  id="layer-opacity"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={commonOpacity}
+                  onChange={(e) => onUpdateElements({ opacity: parseInt(e.target.value) / 100 })}
+                  className="w-full"
+                  disabled={selectedElementIds.length === 0}
+                />
+                <span className="text-xs w-8 text-right">{commonOpacity}%</span>
               </div>
           </div>
-          <div className="overflow-y-auto space-y-1 p-2 max-h-96">
-              {visibleElements.map(element => (
-                  <LayerItem
-                      key={element.id}
-                      element={element}
-                      level={0}
-                      selectedElementIds={selectedElementIds}
-                      onSelect={handleSelect}
-                      onReorder={onReorder}
-                      onSetEditingGroupId={onSetEditingGroupId}
-                  />
-              ))}
+          <div className="flex-grow overflow-y-auto p-2 space-y-1">
+            {isEditing && (
+              <button 
+                onClick={() => onSetEditingGroupId(null)}
+                className="w-full text-left p-2 text-sm text-gray-300 rounded-md hover:bg-gray-700 flex items-center mb-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Back to Layers
+              </button>
+            )}
+            {visibleElements.map(element => (
+              <LayerItem
+                key={element.id}
+                element={element}
+                level={0}
+                selectedElementIds={selectedElementIds}
+                onSelect={handleSelect}
+                onReorder={onReorder}
+                onSetEditingGroupId={onSetEditingGroupId}
+                onToggleVisibility={(id) => onToggleVisibility([id])}
+              />
+            ))}
           </div>
-          <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
-              {editingGroupId && (
-                  <button
-                      onClick={() => onSetEditingGroupId(null)}
-                      className="w-full p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm"
-                  >
-                      Exit Group
-                  </button>
-              )}
-              <div className="flex items-center justify-around">
-                  <button
-                      onClick={() => setIsNewLayerModalOpen(true)}
-                      disabled={isEditing}
-                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                      title="Add New Layer"
-                  >
-                      <span role="img" aria-label="Add Layer">📄+</span>
-                  </button>
-                  <button
-                      onClick={onGroup}
-                      disabled={isEditing || selectedElementIds.length < 2 || isAnySelectedLocked}
-                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                      title="Group Layers (Ctrl+G)"
-                  >
-                      <span role="img" aria-label="Group">📁+</span>
-                  </button>
-                  <button
-                      onClick={onUngroup}
-                      disabled={isEditing || !canUngroup || isAnySelectedLocked}
-                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                      title="Ungroup Layers (Ctrl+Shift+G)"
-                  >
-                      <span role="img" aria-label="Ungroup">📁-</span>
-                  </button>
-                  <button
-                      onClick={onDelete}
-                      disabled={selectedElementIds.length === 0 || isAnySelectedLocked}
-                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                      title="Delete Layer (Delete)"
-                  >
-                      <span role="img" aria-label="Delete">🗑️</span>
-                  </button>
+           <div className="shrink-0 p-2 border-t border-gray-700 flex items-center justify-between">
+              <button
+                onClick={() => setIsNewLayerModalOpen(true)}
+                className="p-2 rounded hover:bg-gray-700"
+                title="Add New Layer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={onGroup}
+                  disabled={selectedElementIds.length < 2}
+                  className="p-2 rounded disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                  title="Group Layers (Ctrl+G)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 14v6m-3-3h6M6 10h2a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2zm10 0h2a2 2 0 002-2V6a2 2 0 00-2-2h-2a2 2 0 00-2 2v2a2 2 0 002 2zM6 20h2a2 2 0 002-2v-2a2 2 0 00-2-2H6a2 2 0 00-2 2v2a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={onUngroup}
+                  disabled={!canUngroup}
+                  className="p-2 rounded disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                  title="Ungroup Layers (Ctrl+Shift+G)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={onDelete}
+                  disabled={selectedElementIds.length === 0}
+                  className="p-2 rounded disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                  title="Delete Layer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
           </div>
       </div>

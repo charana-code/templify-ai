@@ -1177,6 +1177,42 @@ export const useDesignState = () => {
         setElements(toggleLockRecursively);
     }, [setElements]);
 
+    const handleToggleVisibility = useCallback((ids: string[]) => {
+        if (ids.length === 0) return;
+
+        const idsToToggle = new Set(ids);
+
+        const findFirstElement = (elementList: CanvasElement[], elementIds: Set<string>): CanvasElement | null => {
+            for (const el of elementList) {
+                if (elementIds.has(el.id)) return el;
+                if (el.type === 'group') {
+                    const found = findFirstElement(el.elements, elementIds);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        const firstElement = findFirstElement(elementsRef.current, idsToToggle);
+        const newVisibility = !(firstElement?.visible ?? true);
+
+        const toggleVisibilityRecursively = (els: CanvasElement[]): CanvasElement[] => {
+            return els.map(el => {
+                const newEl = { ...el };
+                if (idsToToggle.has(el.id)) {
+                    newEl.visible = newVisibility;
+                }
+                if (newEl.type === 'group') {
+                    newEl.elements = toggleVisibilityRecursively(newEl.elements);
+                }
+                return newEl;
+            });
+        };
+
+        setElements(toggleVisibilityRecursively);
+    }, [setElements]);
+
+
     const handleCopy = useCallback(() => {
       if (selectedElementIds.length === 0) return;
       const elementsToCopy = elementsOnCanvas
@@ -1485,6 +1521,7 @@ export const useDesignState = () => {
     handleGroup,
     handleUngroup,
     handleToggleLock,
+    handleToggleVisibility,
     handleUpdateSelectedElements,
 
     handleReorderElement,

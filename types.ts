@@ -9,6 +9,7 @@ export interface BaseElement {
   height: number;
   rotation: number;
   locked?: boolean;
+  visible?: boolean;
   opacity?: number;
   borderRadius?: number;
   shadowOffsetX?: number;

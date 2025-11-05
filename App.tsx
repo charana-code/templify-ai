@@ -76,6 +76,7 @@ const App: React.FC = () => {
     handleGroup,
     handleUngroup,
     handleToggleLock,
+    handleToggleVisibility,
     handleUpdateSelectedElements,
     handleReorderElement,
     handleAlignOrDistribute,
@@ -297,6 +298,7 @@ const App: React.FC = () => {
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
                 onToggleLock={(ids) => handleToggleLock(ids)}
+                onToggleVisibility={handleToggleVisibility}
                 onAddNewLayer={handleAddNewLayer}
                 onUpdateElements={handleUpdateSelectedElements}
               />

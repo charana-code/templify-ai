@@ -146,6 +146,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     pointerEvents: isPanning ? 'none' : 'auto',
   };
 
+  if (element.visible === false) {
+    styles.display = 'none';
+  }
+
   if (element.shadowOffsetX || element.shadowOffsetY || element.shadowBlur) {
     styles.filter = `drop-shadow(${element.shadowOffsetX || 0}px ${element.shadowOffsetY || 0}px ${element.shadowBlur || 0}px ${element.shadowColor || 'rgba(0,0,0,0.5)'})`;
   }
