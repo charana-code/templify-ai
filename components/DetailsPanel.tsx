@@ -574,44 +574,75 @@ const ExportPanel: React.FC<{
     const editorNode = editorRef.current;
     const clone = editorNode.cloneNode(true) as HTMLElement;
 
+    // Prepare the clone for clean rendering
     clone.style.position = 'absolute';
     clone.style.left = '-9999px';
     clone.style.top = '-9999px';
-    clone.style.overflow = 'visible';
+    clone.style.overflow = 'visible'; // Allow content outside artboard bounds
 
-    const selectedElementsInClone = Array.from(clone.querySelectorAll('[style*="outline"]')) as HTMLElement[];
-    selectedElementsInClone.forEach(el => {
-      el.style.outline = 'none';
-      el.style.boxShadow = 'none';
+    // Process all element wrappers in the clone
+    const elementWrappers = Array.from(clone.children) as HTMLElement[];
+    elementWrappers.forEach(elWrapper => {
+        // Allow content to overflow its individual container (fixes text clipping)
+        elWrapper.style.overflow = 'visible';
+        // Remove selection indicators
+        elWrapper.style.outline = 'none';
+        elWrapper.style.boxShadow = 'none';
+        // Remove resize/rotation handles (all children after the first content element)
+        while (elWrapper.children.length > 1) {
+            elWrapper.lastChild?.remove();
+        }
     });
-
+    
     document.body.appendChild(clone);
 
     try {
-      const canvas = await html2canvas(clone, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const canvas = await html2canvas(clone, {
+            scale: 2,
+            backgroundColor: null, // Use null for transparency support
+            useCORS: true,
+            // Explicitly set capture dimensions to match the artboard
+            width: editorNode.clientWidth,
+            height: editorNode.clientHeight,
+        });
       
-      if (format === 'pdf') {
-        const { width, height } = artboardSize;
-        const orientation = width > height ? 'l' : 'p';
-        const pdf = new jsPDF(orientation, 'px', [width, height]);
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
-        pdf.save('design.pdf');
-      } else {
-        const mimeType = `image/${format}`;
-        const imgData = canvas.toDataURL(mimeType, 0.95);
-        const link = document.createElement('a');
-        link.href = imgData;
-        link.download = `design.${format}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+        if (format === 'pdf') {
+            const { width, height } = artboardSize;
+            const orientation = width > height ? 'l' : 'p';
+            const pdf = new jsPDF(orientation, 'px', [width, height]);
+            pdf.addImage(canvas.toDataURL('image/png', 1.0), 'PNG', 0, 0, width, height);
+            pdf.save('design.pdf');
+        } else {
+            const mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+            let finalCanvas = canvas;
+
+            // For JPEG, create a new canvas and fill it with a white background
+            if (format === 'jpeg') {
+                finalCanvas = document.createElement('canvas');
+                finalCanvas.width = canvas.width;
+                finalCanvas.height = canvas.height;
+                const ctx = finalCanvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                    ctx.drawImage(canvas, 0, 0);
+                }
+            }
+
+            const imgData = finalCanvas.toDataURL(mimeType, 0.95);
+            const link = document.createElement('a');
+            link.href = imgData;
+            link.download = `design.${format}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Could not export the design. Please check the console for errors.');
+        console.error('Export failed:', error);
+        alert('Could not export the design. Please check the console for errors.');
     } finally {
-      document.body.removeChild(clone);
-      setIsExporting(false);
+        document.body.removeChild(clone);
+        setIsExporting(false);
     }
   };
   
