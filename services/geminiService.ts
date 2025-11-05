@@ -1,13 +1,16 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { CanvasElement, TextElement } from "../types";
 
-const API_KEY = process.env.API_KEY;
+// Helper function to get a fresh AI client instance
+// This ensures we always use the latest API key from the environment.
+const getAIClient = () => {
+  const API_KEY = process.env.API_KEY;
+  if (!API_KEY) {
+    throw new Error("API_KEY environment variable not set");
+  }
+  return new GoogleGenAI({ apiKey: API_KEY });
+};
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // Helper to parse a data URI (e.g., "data:image/png;base64,iVBOR...")
 const parseDataUri = (dataUri: string): { mimeType: string; data: string } | null => {
@@ -20,6 +23,7 @@ const parseDataUri = (dataUri: string): { mimeType: string; data: string } | nul
 };
 
 export const generateImageWithAI = async (prompt: string): Promise<string> => {
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -56,6 +60,7 @@ export const editImageWithAI = async (currentImageSrc: string, prompt: string): 
     throw new Error("Invalid image source format. Only base64 data URIs are supported for AI editing.");
   }
 
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
@@ -113,6 +118,7 @@ export const placeContentWithAI = async (elements: CanvasElement[], userContent:
   "${userContent}"
   `;
 
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -188,6 +194,7 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
     shadowColor: { type: Type.STRING, description: "Shadow color as hex or rgba" },
   };
 
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -256,6 +263,7 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
     shadowColor: { type: Type.STRING, description: "Shadow color as hex or rgba" },
   };
 
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro', // Using pro for better reasoning on complex tasks like alignment
@@ -295,7 +303,8 @@ export const generateIconWithAI = async (prompt: string): Promise<{ path: string
 
   User Prompt: "${prompt}"
   `;
-
+  
+  const ai = getAIClient();
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
