@@ -8,10 +8,9 @@ interface LayerItemProps {
   onSelect: (id: string, shiftKey: boolean) => void;
   onReorder: (draggedId: string, targetId: string, position: 'before' | 'after') => void;
   onSetEditingGroupId: (id: string | null) => void;
-  onToggleLock: (id: string) => void;
 }
 
-const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementIds, onSelect, onReorder, onSetEditingGroupId, onToggleLock }) => {
+const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementIds, onSelect, onReorder, onSetEditingGroupId }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [dragOverPosition, setDragOverPosition] = useState<'top' | 'bottom' | null>(null);
 
@@ -78,11 +77,6 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
     }
   };
 
-  const handleLockClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggleLock(element.id);
-  };
-
   const itemStyle: React.CSSProperties = {
     paddingLeft: `${level * 16 + 8}px`,
   };
@@ -126,10 +120,7 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
         )}
         <span className="mr-2 w-4 text-center">{icon}</span>
         <span className="truncate flex-1">{name}</span>
-
-        <button onClick={handleLockClick} className="p-1 rounded-full hover:bg-gray-600 z-10" aria-label={element.locked ? `Unlock ${name}` : `Lock ${name}`}>
-          {element.locked ? '🔒' : '🔓'}
-        </button>
+        {element.locked && <span className="p-1 text-gray-500" title="Locked">🔒</span>}
 
         {dragOverPosition === 'bottom' && <div style={{ ...dragIndicatorStyle, bottom: 0 }} />}
       </div>
@@ -144,7 +135,6 @@ const LayerItem: React.FC<LayerItemProps> = ({ element, level, selectedElementId
               onSelect={onSelect}
               onReorder={onReorder}
               onSetEditingGroupId={onSetEditingGroupId}
-              onToggleLock={onToggleLock}
             />
           ))}
         </div>
@@ -166,9 +156,24 @@ interface LayerPanelProps {
   onUngroup: () => void;
   canUngroup: boolean;
   onToggleLock: (ids: string[]) => void;
+  onUpdateElements: (updates: Partial<CanvasElement>) => void;
 }
 
-const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, onSelectElements, onReorder, onReorderSelection, editingGroupId, onSetEditingGroupId, onDelete, onGroup, onUngroup, canUngroup, onToggleLock }) => {
+const LayerPanel: React.FC<LayerPanelProps> = ({
+  elements,
+  selectedElementIds,
+  onSelectElements,
+  onReorder,
+  onReorderSelection,
+  editingGroupId,
+  onSetEditingGroupId,
+  onDelete,
+  onGroup,
+  onUngroup,
+  canUngroup,
+  onToggleLock,
+  onUpdateElements,
+}) => {
     
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
 
@@ -231,6 +236,28 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
     
     return selectedElementIds.some(id => allElementsById.get(id)?.locked);
   }, [selectedElementIds, elements]);
+  
+  const { commonOpacity } = useMemo(() => {
+    if (selectedElementIds.length === 0) return { commonOpacity: 100 };
+    
+    const allElementsById = new Map<string, CanvasElement>();
+    const crawl = (els: CanvasElement[]) => {
+      els.forEach(el => {
+        allElementsById.set(el.id, el);
+        if (el.type === 'group') crawl(el.elements);
+      });
+    };
+    crawl(elements);
+    
+    const selected = selectedElementIds.map(id => allElementsById.get(id)).filter(Boolean);
+    const firstOpacity = selected[0]?.opacity ?? 1;
+    const allSameOpacity = selected.every(el => (el?.opacity ?? 1) === firstOpacity);
+    
+    return {
+      commonOpacity: allSameOpacity ? Math.round(firstOpacity * 100) : 100, // Default to 100 if mixed
+    };
+  }, [selectedElementIds, elements]);
+
 
   const { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack } = useMemo(() => {
     if (selectedElementIds.length === 0 || editingGroupId) {
@@ -261,7 +288,31 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
 
 
   return (
-    <div className="w-full text-white flex flex-col">
+    <div className="w-full text-white flex flex-col h-full">
+        <div className="shrink-0 p-2 border-b border-gray-700 flex items-center space-x-4">
+             <button
+                onClick={() => onToggleLock(selectedElementIds)}
+                disabled={selectedElementIds.length === 0}
+                className="p-2 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                title={isAnySelectedLocked ? 'Unlock Selected' : 'Lock Selected'}
+            >
+                {isAnySelectedLocked ? '🔒' : '🔓'}
+            </button>
+            <div className="flex-grow flex items-center space-x-2">
+                <label htmlFor="opacity-slider" className="text-sm text-gray-400">Opacity</label>
+                <input
+                    id="opacity-slider"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={commonOpacity}
+                    onChange={(e) => onUpdateElements({ opacity: parseInt(e.target.value, 10) / 100 })}
+                    disabled={selectedElementIds.length === 0}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                />
+                <span className="text-sm w-10 text-right">{commonOpacity}%</span>
+            </div>
+        </div>
         <div className="flex-1 overflow-y-auto space-y-1 p-2">
             {visibleElements.map(element => (
                 <LayerItem
@@ -272,7 +323,6 @@ const LayerPanel: React.FC<LayerPanelProps> = ({ elements, selectedElementIds, o
                     onSelect={handleSelect}
                     onReorder={onReorder}
                     onSetEditingGroupId={onSetEditingGroupId}
-                    onToggleLock={(id) => onToggleLock([id])}
                 />
             ))}
         </div>

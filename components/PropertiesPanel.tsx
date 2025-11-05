@@ -168,7 +168,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
             <NumberInput label="W" value={commonProps.width ?? 0} onChange={v => handleUpdate({ width: v })} />
             <NumberInput label="H" value={commonProps.height ?? 0} onChange={v => handleUpdate({ height: v })} />
             <NumberInput label="Rotation" value={commonProps.rotation ?? 0} onChange={v => handleUpdate({ rotation: v })} suffix="°" />
-             <NumberInput label="Opacity" value={(commonProps.opacity ?? 1) * 100} onChange={v => handleUpdate({ opacity: v / 100 })} suffix="%" />
         </div>
 
         {singleSelectedElement && <div className="border-t border-gray-700 pt-3 mt-3 space-y-3">

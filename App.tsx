@@ -266,6 +266,7 @@ const App: React.FC = () => {
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
                 onToggleLock={(ids) => handleToggleLock(ids)}
+                onUpdateElements={handleUpdateSelectedElements}
               />
             </Accordion>
           </div>
