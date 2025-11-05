@@ -209,24 +209,28 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
     const [processingImageSrc, setProcessingImageSrc] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [imageLayout, setImageLayout] = useState<'grid' | 'list'>('list');
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    const processFiles = (files: FileList | null) => {
+        if (!files) return;
+
+        const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+        if (imageFiles.length === 0) return;
+
+        for (const file of imageFiles) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                if (reader.result) {
+                    setUploadedImages(prev => [reader.result as string, ...prev]);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (files) {
-            for (let i = 0; i < files.length; i++) {
-                const file = files.item(i);
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        if (reader.result) {
-                            setUploadedImages(prev => [reader.result as string, ...prev]);
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            e.target.value = '';
-        }
+        processFiles(e.target.files);
+        if (e.target) e.target.value = '';
     };
 
     const handleDragStart = (e: React.DragEvent, src: string) => {
@@ -273,6 +277,25 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
         setUploadedImages(prev => prev.filter((_, index) => index !== indexToDelete));
     };
 
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+        processFiles(e.dataTransfer.files);
+    };
+
 
     return (
         <div className="p-4 flex flex-col h-full">
@@ -294,8 +317,13 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                 </Accordion>
             </div>
             
-            <div className="flex flex-col flex-grow min-h-0 pt-4 space-y-2">
-                <div className="flex justify-between items-center shrink-0">
+            <div
+                className={`relative flex flex-col flex-grow min-h-0 pt-4 space-y-2 rounded-lg transition-all ${isDraggingOver ? 'bg-blue-900/50 ring-2 ring-blue-500 ring-dashed' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                <div className="flex justify-between items-center shrink-0 px-2">
                     <h3 className="text-lg font-bold text-gray-400">Your Images</h3>
                      <div className="flex items-center space-x-2">
                         {uploadedImages.length > 0 && (
@@ -341,7 +369,7 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                 />
 
                 {uploadedImages.length > 0 ? (
-                    <div className="flex-grow overflow-y-auto -mr-2 pr-2">
+                    <div className="flex-grow overflow-y-auto -mr-2 pr-2 px-2">
                         <div className={`${imageLayout === 'grid' ? 'grid grid-cols-2 gap-2' : 'flex flex-col space-y-2'}`}>
                            {uploadedImages.map((src, index) => {
                                 const isSvg = src.startsWith('data:image/svg+xml');
@@ -361,7 +389,8 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                                     )}
                                     
                                     {!processingImageSrc && (
-                                        <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-2 rounded-lg p-2">
+                                        <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-2 rounded-lg p-2 text-center">
+                                            <p className="text-xs text-gray-300 pointer-events-none">Drag to canvas</p>
                                             <button
                                                 onClick={() => handleRemoveBackground(src, index)}
                                                 disabled={isSvg}
@@ -391,8 +420,17 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center text-xs text-gray-500 p-4 border-2 border-dashed border-gray-700 rounded-lg flex-grow flex items-center justify-center">
-                        <span>Upload images to see them here.</span>
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-center text-sm text-gray-500 p-4 border-2 border-dashed border-gray-700 rounded-lg flex-grow flex items-center justify-center m-2 flex-col cursor-pointer hover:bg-gray-800 hover:border-gray-500 transition-colors"
+                    >
+                        <span>Click to upload images</span>
+                        <span className="text-xs mt-1">or drag and drop them here</span>
+                    </div>
+                )}
+                {isDraggingOver && (
+                    <div className="absolute inset-0 bg-blue-500 bg-opacity-20 flex items-center justify-center pointer-events-none rounded-lg border-2 border-dashed border-blue-400">
+                        <p className="text-white font-bold text-lg">Drop to Upload</p>
                     </div>
                 )}
             </div>
