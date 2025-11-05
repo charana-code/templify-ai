@@ -80,8 +80,12 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
+      const textarea = textareaRef.current;
+      textarea.focus();
+      textarea.select();
+      // Auto-resize on initial edit
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
     }
   }, [isEditing]);
 
@@ -101,21 +105,25 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditableContent(e.target.value);
+    // Auto-resize as user types
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
   };
 
   const handleEditBlur = () => {
-    if (isEditing) {
-      onUpdate(element.id, { content: editableContent });
+    if (isEditing && textareaRef.current) {
+      onUpdate(element.id, { 
+        content: editableContent,
+        height: textareaRef.current.scrollHeight 
+      });
       setIsEditing(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
-      setIsEditing(false);
-    } else if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleEditBlur();
+      e.currentTarget.blur();
     }
   };
 
@@ -124,7 +132,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     left: `${element.x}px`,
     top: `${element.y}px`,
     width: `${element.width}px`,
-    height: `${element.height}px`,
+    height: isEditing ? 'auto' : `${element.height}px`,
     transform: `rotate(${element.rotation}deg)`,
     cursor: isEditing ? 'default' : (isDragging ? 'grabbing' : 'grab'),
     userSelect: 'none',
@@ -192,6 +200,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     switch (element.type) {
       case 'text':
         const textEl = element as TextElement;
+        const textDecorations: string[] = [];
+        if (textEl.underline) textDecorations.push('underline');
+        if (textEl.strikethrough) textDecorations.push('line-through');
+
         const textStyles: React.CSSProperties = {
           fontSize: `${textEl.fontSize}px`,
           fontWeight: textEl.fontWeight,
@@ -202,6 +214,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
           lineHeight: textEl.lineHeight,
           letterSpacing: `${textEl.letterSpacing || 0}px`,
           textTransform: textEl.textTransform || 'none',
+          textDecoration: textDecorations.length > 0 ? textDecorations.join(' ') : 'none',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -213,7 +226,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         };
         
         if (isEditing) {
-          const { display, alignItems, justifyContent, ...textareaInheritedStyles } = textStyles;
+          const { display, alignItems, justifyContent, height, ...textareaInheritedStyles } = textStyles;
 
           const textareaStyles: React.CSSProperties = {
             ...textareaInheritedStyles,
@@ -223,6 +236,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             resize: 'none',
             margin: 0,
             overflowWrap: 'break-word',
+            overflow: 'hidden', // Hide scrollbar
           };
 
           return (

@@ -25,6 +25,8 @@ export interface TextElement extends BaseElement {
   lineHeight: number;
   letterSpacing: number;
   textTransform: 'none' | 'uppercase' | 'lowercase';
+  underline?: boolean;
+  strikethrough?: boolean;
 }
 
 export interface ImageElement extends BaseElement {

@@ -1,9 +1,9 @@
 import React from 'react';
-import { CanvasElement, TextElement, ImageElement, ShapeElement } from '../types';
+import { CanvasElement, TextElement, ImageElement, ShapeElement, ElementType } from '../types';
 
 const NumberInput: React.FC<{
   label: string;
-  value: number;
+  value: number | undefined;
   onChange: (value: number) => void;
   suffix?: string;
   step?: number;
@@ -13,10 +13,11 @@ const NumberInput: React.FC<{
     <div className="relative">
       <input
         type="number"
-        value={Math.round(value)}
+        value={value !== undefined ? Math.round(value) : ''}
+        placeholder={value === undefined ? 'Mixed' : ''}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         step={step}
-        className="w-24 bg-gray-800 border border-gray-700 rounded-md p-1 pl-2 pr-6 text-sm text-right"
+        className="w-24 bg-gray-800 border border-gray-700 rounded-md p-1 pl-2 pr-6 text-sm text-right placeholder-gray-500"
       />
       {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">{suffix}</span>}
     </div>
@@ -25,7 +26,7 @@ const NumberInput: React.FC<{
 
 const ColorInput: React.FC<{
     label: string;
-    value: string;
+    value: string | undefined;
     onChange: (value: string) => void;
 }> = ({ label, value, onChange }) => (
     <div className="flex items-center justify-between">
@@ -33,16 +34,17 @@ const ColorInput: React.FC<{
         <div className="flex items-center space-x-2">
             <input
                 type="color"
-                value={value === 'transparent' ? '#000000' : value}
+                value={value === 'transparent' ? '#000000' : (value || '#ffffff')}
                 onChange={(e) => onChange(e.target.value)}
                 className="w-6 h-6 p-0 border-none rounded cursor-pointer bg-gray-800"
                 style={{ appearance: 'none', WebkitAppearance: 'none' }}
             />
              <input
                 type="text"
-                value={value}
+                value={value ?? ''}
+                placeholder={value === undefined ? 'Mixed' : ''}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-24 bg-gray-800 border border-gray-700 rounded-md p-1 text-sm"
+                className="w-24 bg-gray-800 border border-gray-700 rounded-md p-1 text-sm placeholder-gray-500"
             />
         </div>
     </div>
@@ -51,17 +53,18 @@ const ColorInput: React.FC<{
 
 const SelectInput: React.FC<{
     label: string;
-    value: string;
+    value: string | undefined;
     onChange: (value: string) => void;
     options: { value: string; label: string }[];
 }> = ({ label, value, onChange, options }) => (
     <div className="flex items-center justify-between">
         <label className="text-xs text-gray-400">{label}</label>
         <select
-            value={value}
+            value={value ?? ''}
             onChange={(e) => onChange(e.target.value)}
-            className="w-32 bg-gray-800 border border-gray-700 rounded-md p-1 text-sm"
+            className={`w-32 bg-gray-800 border border-gray-700 rounded-md p-1 text-sm ${value === undefined ? 'text-gray-500' : ''}`}
         >
+            {value === undefined && <option value="" disabled>Mixed</option>}
             {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
     </div>
@@ -75,12 +78,15 @@ interface PropertiesPanelProps {
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, elements, onUpdateElements }) => {
   const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
-  const singleSelectedElement = selectedElements.length === 1 ? selectedElements[0] : null;
 
   if (selectedElements.length === 0) {
     return null;
   }
   
+  const commonType = selectedElements.length > 0 && selectedElements.every(el => el.type === selectedElements[0].type)
+    ? selectedElements[0].type
+    : null;
+    
   const commonProps = selectedElements.reduce((acc, el, index) => {
       if (index === 0) return { ...el };
       Object.keys(acc).forEach(key => {
@@ -89,13 +95,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
           }
       });
       return acc;
-  }, {} as Partial<CanvasElement>);
+  }, {} as Partial<CanvasElement> & { type?: ElementType });
 
   const handleUpdate = (updates: Partial<CanvasElement>) => {
     onUpdateElements(updates);
   };
 
-  const renderTextProperties = (element: TextElement) => (
+  const renderTextProperties = (element: Partial<TextElement>) => (
     <>
         <NumberInput label="Font Size" value={element.fontSize} onChange={v => handleUpdate({ fontSize: v })} suffix="px" />
         <ColorInput label="Color" value={element.color} onChange={v => handleUpdate({ color: v })} />
@@ -107,9 +113,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
              { value: 'Courier New', label: 'Courier New' },
         ]} />
         <div className="flex space-x-2">
-            <button onClick={() => handleUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full p-1 rounded ${element.fontWeight === 'bold' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>B</button>
-            <button onClick={() => handleUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`w-full p-1 rounded ${element.fontStyle === 'italic' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>I</button>
-            <button onClick={() => handleUpdate({ textTransform: element.textTransform === 'uppercase' ? 'none' : 'uppercase' })} className={`w-full p-1 rounded ${element.textTransform === 'uppercase' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>TT</button>
+            <button title="Bold" onClick={() => handleUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full p-1 rounded font-bold ${element.fontWeight === 'bold' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>B</button>
+            <button title="Italic" onClick={() => handleUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`w-full p-1 rounded italic ${element.fontStyle === 'italic' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>I</button>
+            <button title="Underline" onClick={() => handleUpdate({ underline: !element.underline })} className={`w-full p-1 rounded underline ${element.underline ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>U</button>
+            <button title="Strikethrough" onClick={() => handleUpdate({ strikethrough: !element.strikethrough })} className={`w-full p-1 rounded line-through ${element.strikethrough ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>S</button>
+            <button title="Uppercase" onClick={() => handleUpdate({ textTransform: element.textTransform === 'uppercase' ? 'none' : 'uppercase' })} className={`w-full p-1 rounded ${element.textTransform === 'uppercase' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>TT</button>
         </div>
         <NumberInput label="Line Height" value={element.lineHeight} onChange={v => handleUpdate({ lineHeight: v })} step={0.1} />
         <NumberInput label="Spacing" value={element.letterSpacing} onChange={v => handleUpdate({ letterSpacing: v })} suffix="px" />
@@ -142,19 +150,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
     </>
   );
 
-  const renderImageProperties = (element: ImageElement) => (
+  const renderImageProperties = (element: Partial<ImageElement>) => (
     <div className="grid grid-cols-2 gap-2">
         <button onClick={() => handleUpdate({ flipHorizontal: !element.flipHorizontal })} className="p-2 bg-gray-700 rounded">Flip H</button>
         <button onClick={() => handleUpdate({ flipVertical: !element.flipVertical })} className="p-2 bg-gray-700 rounded">Flip V</button>
     </div>
   );
   
-  const renderShapeProperties = (element: ShapeElement) => (
+  const renderShapeProperties = (element: Partial<ShapeElement>) => (
       <>
         <ColorInput label="Fill" value={element.fill} onChange={v => handleUpdate({ fill: v })} />
         <ColorInput label="Stroke" value={element.stroke} onChange={v => handleUpdate({ stroke: v })} />
         <NumberInput label="Stroke Width" value={element.strokeWidth} onChange={v => handleUpdate({ strokeWidth: v })} suffix="px" />
-        <SelectInput label="Stroke Style" value={element.strokeDash ?? 'solid'} onChange={v => handleUpdate({ strokeDash: v as ShapeElement['strokeDash'] })} options={[
+        <SelectInput label="Stroke Style" value={element.strokeDash} onChange={v => handleUpdate({ strokeDash: v as ShapeElement['strokeDash'] })} options={[
              { value: 'solid', label: 'Solid' }, { value: 'dashed', label: 'Dashed' }, { value: 'dotted', label: 'Dotted' },
         ]} />
       </>
@@ -163,18 +171,20 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
   return (
     <div className="p-3 space-y-3">
         <div className="grid grid-cols-2 gap-3">
-            <NumberInput label="X" value={commonProps.x ?? 0} onChange={v => handleUpdate({ x: v })} />
-            <NumberInput label="Y" value={commonProps.y ?? 0} onChange={v => handleUpdate({ y: v })} />
-            <NumberInput label="W" value={commonProps.width ?? 0} onChange={v => handleUpdate({ width: v })} />
-            <NumberInput label="H" value={commonProps.height ?? 0} onChange={v => handleUpdate({ height: v })} />
-            <NumberInput label="Rotation" value={commonProps.rotation ?? 0} onChange={v => handleUpdate({ rotation: v })} suffix="°" />
+            <NumberInput label="X" value={commonProps.x} onChange={v => handleUpdate({ x: v })} />
+            <NumberInput label="Y" value={commonProps.y} onChange={v => handleUpdate({ y: v })} />
+            <NumberInput label="W" value={commonProps.width} onChange={v => handleUpdate({ width: v })} />
+            <NumberInput label="H" value={commonProps.height} onChange={v => handleUpdate({ height: v })} />
+            <NumberInput label="Rotation" value={commonProps.rotation} onChange={v => handleUpdate({ rotation: v })} suffix="°" />
         </div>
 
-        {singleSelectedElement && <div className="border-t border-gray-700 pt-3 mt-3 space-y-3">
-            {singleSelectedElement.type === 'text' && renderTextProperties(singleSelectedElement)}
-            {singleSelectedElement.type === 'image' && renderImageProperties(singleSelectedElement)}
-            {singleSelectedElement.type === 'shape' && renderShapeProperties(singleSelectedElement)}
-        </div>}
+        {commonType && (
+            <div className="border-t border-gray-700 pt-3 mt-3 space-y-3">
+                {commonType === 'text' && renderTextProperties(commonProps as Partial<TextElement>)}
+                {commonType === 'image' && renderImageProperties(commonProps as Partial<ImageElement>)}
+                {commonType === 'shape' && renderShapeProperties(commonProps as Partial<ShapeElement>)}
+            </div>
+        )}
     </div>
   );
 };

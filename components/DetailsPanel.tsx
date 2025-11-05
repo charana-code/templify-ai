@@ -85,6 +85,8 @@ const TextToolPanel = () => (
         lineHeight: 1.2,
         letterSpacing: 0,
         textTransform: 'none',
+        underline: false,
+        strikethrough: false,
       }}
     />
     <DraggableTextPreset
@@ -103,6 +105,8 @@ const TextToolPanel = () => (
         lineHeight: 1.3,
         letterSpacing: 0,
         textTransform: 'none',
+        underline: false,
+        strikethrough: false,
       }}
     />
     <DraggableTextPreset
@@ -121,6 +125,8 @@ const TextToolPanel = () => (
         lineHeight: 1.5,
         letterSpacing: 0,
         textTransform: 'none',
+        underline: false,
+        strikethrough: false,
       }}
     />
   </div>

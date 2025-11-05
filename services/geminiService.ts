@@ -149,6 +149,7 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
   - For 'fontWeight', use 'normal' or 'bold'.
   - For 'fontStyle', use 'normal' or 'italic'.
   - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
+  - For 'underline' or 'strikethrough', use a boolean.
   - For 'fontFamily', suggest a common web font like 'Arial', 'Verdana', 'Georgia', 'Times New Roman', or 'Courier New'.
 
   Selected Element:
@@ -167,6 +168,8 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
     lineHeight: { type: Type.NUMBER, description: "Line height (e.g. 1.5 for 150%)" },
     letterSpacing: { type: Type.NUMBER, description: "Letter spacing in pixels" },
     textTransform: { type: Type.STRING, description: "'none', 'uppercase', or 'lowercase'" },
+    underline: { type: Type.BOOLEAN, description: "Whether the text is underlined." },
+    strikethrough: { type: Type.BOOLEAN, description: "Whether the text has a strikethrough." },
     width: { type: Type.NUMBER, description: "Width in pixels" },
     height: { type: Type.NUMBER, description: "Height in pixels" },
     rotation: { type: Type.NUMBER, description: "Rotation in degrees" },
@@ -206,6 +209,7 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
   - For 'fontWeight', use 'normal' or 'bold'.
   - For 'fontStyle', use 'normal' or 'italic'.
   - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
+  - For 'underline' or 'strikethrough', use booleans.
 
   Selected Elements:
   ${JSON.stringify(elements.map(({ id, type, x, y, width, height }) => ({ id, type, x, y, width, height })), null, 2)}
@@ -230,6 +234,8 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
     lineHeight: { type: Type.NUMBER, description: "Line height (e.g. 1.5 for 150%)" },
     letterSpacing: { type: Type.NUMBER, description: "Letter spacing in pixels" },
     textTransform: { type: Type.STRING, description: "'none', 'uppercase', or 'lowercase'" },
+    underline: { type: Type.BOOLEAN, description: "Whether the text is underlined." },
+    strikethrough: { type: Type.BOOLEAN, description: "Whether the text has a strikethrough." },
     content: { type: Type.STRING, description: "The text content of the element" }
   };
 

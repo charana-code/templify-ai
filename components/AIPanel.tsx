@@ -64,12 +64,12 @@ const AIPanel: React.FC<AIPanelProps> = ({
         <p className="text-xs text-gray-500 mb-2">
           Select an element on the canvas and give the AI a command to modify it.
         </p>
-        <input
-          type="text"
+        <textarea
+          rows={3}
           value={aiCommand}
           onChange={(e) => setAiCommand(e.target.value)}
           placeholder={getDesignerPlaceholder()}
-          className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={selectedElementIds.length === 0}
         />
         <button
