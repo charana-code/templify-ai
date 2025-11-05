@@ -111,7 +111,7 @@ export const useDesignState = () => {
   const [customTemplates, setCustomTemplates] = useState<{ name: string, elements: any[] }[]>([]);
   const [liveElements, setLiveElements] = useState<CanvasElement[] | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [activeTool, setActiveTool] = useState<'templates' | 'text' | 'image' | 'shapes' | 'export' | null>('templates');
+  const [activeTool, _setActiveTool] = useState<'templates' | 'text' | 'image' | 'shapes' | 'export' | null>('templates');
   const [isDetailsPanelCollapsed, setIsDetailsPanelCollapsed] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -128,6 +128,13 @@ export const useDesignState = () => {
   
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
+  
+  const setActiveTool = useCallback((tool: 'text' | 'image' | 'shapes' | 'templates' | 'export') => {
+    _setActiveTool(tool);
+    if (isDetailsPanelCollapsed) {
+      setIsDetailsPanelCollapsed(false);
+    }
+  }, [isDetailsPanelCollapsed]);
 
   const handleGridGuidesConfigChange = useCallback((newConfig: Partial<typeof gridGuidesConfig>) => {
     setGridGuidesConfig(prev => ({ ...prev, ...newConfig }));
