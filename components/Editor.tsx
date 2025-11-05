@@ -4,12 +4,14 @@ import ElementRenderer from './ElementRenderer';
 
 interface EditorProps {
   artboardSize: { width: number; height: number };
+  artboardBackgroundColor: string;
   elements: CanvasElement[];
   selectedElementIds: string[];
   draggingElementId: string | null;
   guides: Guide[];
   zoom: number;
   editingGroup: GroupElement | null;
+  isPanning: boolean;
   onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
   onAddTemplate: (templateElements: any[], options?: { group?: boolean }) => void;
   onUpdateElement: (id: string, updates: Partial<CanvasElement>) => void;
@@ -21,12 +23,14 @@ interface EditorProps {
 
 const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   artboardSize,
+  artboardBackgroundColor,
   elements,
   selectedElementIds,
   draggingElementId,
   guides,
   zoom,
   editingGroup,
+  isPanning,
   onAddElement,
   onAddTemplate,
   onUpdateElement,
@@ -71,10 +75,11 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
   return (
     <div
       ref={ref}
-      className="bg-white rounded-lg relative overflow-hidden shadow-2xl shrink-0"
+      className="rounded-lg relative overflow-hidden shadow-2xl shrink-0"
       style={{
         width: `${artboardSize.width}px`,
         height: `${artboardSize.height}px`,
+        backgroundColor: artboardBackgroundColor,
       }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -100,6 +105,7 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
           isSelected={selectedElementIds.includes(element.id)}
           isResizable={selectedElementIds.length === 1 && selectedElementIds[0] === element.id}
           isDragging={draggingElementId !== null && selectedElementIds.includes(element.id)}
+          isPanning={isPanning}
           onElementMouseDown={onElementMouseDown}
           onUpdate={onUpdateElement}
           onResizeStart={onResizeStart}

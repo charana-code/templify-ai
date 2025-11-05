@@ -6,6 +6,7 @@ interface ElementRendererProps {
   isSelected: boolean;
   isResizable: boolean;
   isDragging: boolean;
+  isPanning: boolean;
   onUpdate: (id:string, updates: Partial<CanvasElement>) => void;
   onElementMouseDown: (id: string, e: React.MouseEvent) => void;
   onResizeStart: (id: string, direction: string, e: React.MouseEvent) => void;
@@ -63,7 +64,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   element, 
   isSelected,
   isResizable,
-  isDragging, 
+  isDragging,
+  isPanning,
   onUpdate, 
   onElementMouseDown, 
   onResizeStart,
@@ -141,6 +143,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     opacity: element.opacity ?? 1,
     borderRadius: `${element.borderRadius || 0}px`,
     overflow: 'hidden',
+    pointerEvents: isPanning ? 'none' : 'auto',
   };
 
   if (element.shadowOffsetX || element.shadowOffsetY || element.shadowBlur) {
@@ -313,6 +316,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                 isSelected={false}
                 isResizable={false}
                 isDragging={false}
+                isPanning={isPanning}
                 onElementMouseDown={() => {}}
                 onUpdate={() => {}}
                 onResizeStart={() => {}}

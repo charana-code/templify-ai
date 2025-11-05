@@ -14,6 +14,7 @@ const loadInitialState = () => {
         return {
           initialArtboardSize: savedDesign.artboardSize as { width: number; height: number },
           initialElements: savedDesign.elements as CanvasElement[],
+          initialBackgroundColor: savedDesign.artboardBackgroundColor || '#FFFFFF',
         };
       }
     }
@@ -21,10 +22,10 @@ const loadInitialState = () => {
     console.error("Failed to load saved design", e);
     localStorage.removeItem(SAVE_KEY);
   }
-  return { initialArtboardSize: null, initialElements: [] as CanvasElement[] };
+  return { initialArtboardSize: null, initialElements: [] as CanvasElement[], initialBackgroundColor: '#FFFFFF' };
 };
 
-const { initialArtboardSize, initialElements } = loadInitialState();
+const { initialArtboardSize, initialElements, initialBackgroundColor } = loadInitialState();
 
 
 const makeElementUpdater = (id: string, updates: Partial<CanvasElement>, groupContext: GroupElement | undefined | null) => {
@@ -98,6 +99,7 @@ export const useDesignState = () => {
 
 
   const [artboardSize, setArtboardSize] = useState<{ width: number, height: number } | null>(initialArtboardSize);
+  const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>(initialBackgroundColor);
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +123,7 @@ export const useDesignState = () => {
   const isPanningRef = useRef(isPanning);
   isPanningRef.current = isPanning;
   const panInfoRef = useRef({ isDragging: false });
+  const isInitialMount = useRef(true);
 
 
   const clipboardRef = useRef<(Omit<TextElement, 'id'> | Omit<ImageElement, 'id'> | Omit<ShapeElement, 'id'> | Omit<GroupElement, 'id'>)[]>([]);
@@ -130,6 +133,9 @@ export const useDesignState = () => {
 
   const artboardSizeRef = useRef(artboardSize);
   artboardSizeRef.current = artboardSize;
+  
+  const artboardBackgroundColorRef = useRef(artboardBackgroundColor);
+  artboardBackgroundColorRef.current = artboardBackgroundColor;
   
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
@@ -172,6 +178,7 @@ export const useDesignState = () => {
     try {
       const designState = {
         artboardSize: artboardSizeRef.current,
+        artboardBackgroundColor: artboardBackgroundColorRef.current,
         elements: elementsRef.current,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(designState));
@@ -188,6 +195,7 @@ export const useDesignState = () => {
         try {
             const designState = {
                 artboardSize: artboardSizeRef.current,
+                artboardBackgroundColor: artboardBackgroundColorRef.current,
                 elements: elementsRef.current,
             };
             localStorage.setItem(SAVE_KEY, JSON.stringify(designState));
@@ -287,6 +295,18 @@ export const useDesignState = () => {
   }, [artboardSize, fitToScreen]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+    }
+    // Wait for the panel collapse/expand transition to complete before fitting to screen
+    const timer = setTimeout(() => {
+      fitToScreen();
+    }, 300); // This duration should match the transition duration in App.tsx
+    return () => clearTimeout(timer);
+  }, [isDetailsPanelCollapsed, isRightPanelCollapsed, fitToScreen]);
+
+  useEffect(() => {
     if (editorContainerRef.current) {
       const container = editorContainerRef.current;
       container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
@@ -295,8 +315,9 @@ export const useDesignState = () => {
   }, [zoom]);
 
 
-  const handleArtboardSelect = (width: number, height: number) => {
+  const handleArtboardSelect = (width: number, height: number, backgroundColor: string) => {
     setArtboardSize({ width, height });
+    setArtboardBackgroundColor(backgroundColor);
   };
 
   const handleAddElement = useCallback((element: Omit<CanvasElement, 'id'>) => {
@@ -1343,6 +1364,7 @@ export const useDesignState = () => {
         }
         setArtboardSize(null);
         resetElementsHistory([]);
+        setArtboardBackgroundColor('#FFFFFF');
         setSelectedElementIds([]);
         setEditingGroupId(null);
         localStorage.removeItem(SAVE_KEY);
@@ -1382,6 +1404,7 @@ export const useDesignState = () => {
 
   return {
     artboardSize,
+    artboardBackgroundColor,
     handleArtboardSelect,
     elements,
     elementsToRender,

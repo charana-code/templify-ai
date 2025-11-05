@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CanvasElement, TextElement, ShapeElement, ImageElement, GroupElement } from '../types';
-import { generateImageWithAI, editImageWithAI } from '../services/geminiService';
+import { generateImageWithAI, editImageWithAI, generateIconWithAI } from '../services/geminiService';
 import Accordion from './Accordion';
 
 const DraggableTextPreset: React.FC<{
@@ -343,7 +343,9 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                 {uploadedImages.length > 0 ? (
                     <div className="flex-grow overflow-y-auto -mr-2 pr-2">
                         <div className={`${imageLayout === 'grid' ? 'grid grid-cols-2 gap-2' : 'flex flex-col space-y-2'}`}>
-                           {uploadedImages.map((src, index) => (
+                           {uploadedImages.map((src, index) => {
+                                const isSvg = src.startsWith('data:image/svg+xml');
+                                return (
                                 <div
                                     key={`${src.substring(0, 20)}-${index}`}
                                     draggable={!processingImageSrc}
@@ -362,8 +364,9 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                                         <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-2 rounded-lg p-2">
                                             <button
                                                 onClick={() => handleRemoveBackground(src, index)}
-                                                className="flex items-center justify-center w-full max-w-[130px] px-2 py-1.5 rounded bg-white/20 hover:bg-blue-600 text-white text-xs font-semibold transition-colors backdrop-blur-sm"
-                                                title="Remove Background"
+                                                disabled={isSvg}
+                                                className="flex items-center justify-center w-full max-w-[130px] px-2 py-1.5 rounded bg-white/20 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors backdrop-blur-sm"
+                                                title={isSvg ? "AI editing is not supported for SVG images" : "Remove Background"}
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
                                                   <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 110-2h1V3a1 1 0 011-1zM13 10a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" />
@@ -384,7 +387,7 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </div>
                 ) : (
@@ -397,22 +400,61 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
     );
 };
 
-// FIX: Made ElementDef generic to allow for specific element types (like ShapeElement with `shapeType`), which resolves excess property checking errors from TypeScript for discriminated unions.
 type ElementDef<T extends CanvasElement = CanvasElement> = {
     name: string;
     element: Omit<T, 'id' | 'x' | 'y' | 'rotation'>;
     preview: React.ReactNode;
 };
 
-const AllElementsView: React.FC<{
+interface AllElementsViewProps {
     title: string;
     items: ElementDef[];
     onBack: () => void;
-}> = ({ title, items, onBack }) => {
+    onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
+    artboardSize: { width: number; height: number };
+}
+
+const AllElementsView: React.FC<AllElementsViewProps> = ({ title, items, onBack, onAddElement, artboardSize }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+
     const filteredItems = items.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const handleGenerate = async () => {
+        if (!aiPrompt.trim()) return;
+        setIsGenerating(true);
+        try {
+            const { path, viewBox } = await generateIconWithAI(aiPrompt);
+            const elementWidth = 100;
+            const elementHeight = 100;
+            const newIconElement: Omit<ShapeElement, 'id'> = {
+                type: 'shape',
+                shapeType: 'icon',
+                width: elementWidth,
+                height: elementHeight,
+                x: (artboardSize.width - elementWidth) / 2,
+                y: (artboardSize.height - elementHeight) / 2,
+                rotation: 0,
+                path: path,
+                viewBox: viewBox,
+                fill: '#3b82f6',
+                stroke: 'transparent',
+                strokeWidth: 0,
+            };
+            onAddElement(newIconElement);
+            setAiPrompt('');
+            onBack(); 
+        } catch (error) {
+            console.error("Failed to generate and add icon:", error);
+            alert("Sorry, the AI couldn't create that icon. Please try a different prompt.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
 
     return (
         <div className="flex flex-col h-full">
@@ -434,13 +476,34 @@ const AllElementsView: React.FC<{
                 />
             </div>
             <div className="flex-grow overflow-y-auto p-4">
-                <div className="grid grid-cols-3 gap-4">
-                    {filteredItems.map(item => (
-                        <DraggableElement key={item.name} element={item.element}>
-                            {item.preview}
-                        </DraggableElement>
-                    ))}
-                </div>
+                {filteredItems.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-4">
+                        {filteredItems.map(item => (
+                            <DraggableElement key={item.name} element={item.element}>
+                                {item.preview}
+                            </DraggableElement>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center text-gray-400 p-4">
+                        <h4 className="font-bold text-lg mb-2">No results for "{searchTerm}"</h4>
+                        <p className="text-sm mb-4">Can't find what you're looking for? <br/>Describe it to our AI Designer!</p>
+                        <textarea
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            placeholder="e.g., a smiling sun with sunglasses"
+                            className="w-full h-24 bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            disabled={isGenerating}
+                        />
+                        <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !aiPrompt.trim()}
+                            className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"
+                        >
+                            {isGenerating ? 'Generating...' : 'Generate'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -714,7 +777,6 @@ interface DetailsPanelProps {
   activeTool: 'text' | 'image' | 'elements' | 'templates' | 'export' | null;
   onAddElement: (element: Omit<CanvasElement, 'id'>) => void;
   customTemplates: { name: string, elements: any[] }[];
-  // Props for export panel
   editorRef: React.RefObject<HTMLDivElement>;
   artboardSize: { width: number; height: number };
   onSaveTemplate: (name: string) => void;
@@ -731,19 +793,19 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
         return <ImageToolPanel onAddElement={onAddElement} />;
       case 'elements':
         if (subView === 'shapes') {
-          return <AllElementsView title="Shapes" items={shapeDefinitions} onBack={() => setSubView('main')} />;
+          return <AllElementsView title="Shapes" items={shapeDefinitions} onBack={() => setSubView('main')} onAddElement={onAddElement} artboardSize={artboardSize} />;
         }
         if (subView === 'icons') {
-            return <AllElementsView title="Icons" items={iconDefinitions} onBack={() => setSubView('main')} />;
+            return <AllElementsView title="Icons" items={iconDefinitions} onBack={() => setSubView('main')} onAddElement={onAddElement} artboardSize={artboardSize} />;
         }
         if (subView === 'frames') {
-            return <AllElementsView title="Frames" items={frameDefinitions} onBack={() => setSubView('main')} />;
+            return <AllElementsView title="Frames" items={frameDefinitions} onBack={() => setSubView('main')} onAddElement={onAddElement} artboardSize={artboardSize} />;
         }
         if (subView === 'graphics') {
-            return <AllElementsView title="Graphics" items={graphicsDefinitions} onBack={() => setSubView('main')} />;
+            return <AllElementsView title="Graphics" items={graphicsDefinitions} onBack={() => setSubView('main')} onAddElement={onAddElement} artboardSize={artboardSize} />;
         }
         if (subView === 'social') {
-            return <AllElementsView title="Social Media & Logos" items={socialMediaDefinitions} onBack={() => setSubView('main')} />;
+            return <AllElementsView title="Social Media & Logos" items={socialMediaDefinitions} onBack={() => setSubView('main')} onAddElement={onAddElement} artboardSize={artboardSize} />;
         }
         return <ElementsToolPanel onSetSubView={setSubView} />;
       case 'templates':
@@ -769,7 +831,6 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
 // --- DATA DEFINITIONS FOR ELEMENTS PANEL ---
 
 const defaultShapeProps = { fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' as const };
-// FIX: Use ElementDef<ShapeElement> to correctly type the array of shape definitions, allowing shape-specific properties.
 const shapeDefinitions: ElementDef<ShapeElement>[] = [
     { name: 'Rectangle', element: { type: 'shape', shapeType: 'rectangle', width: 150, height: 100, ...defaultShapeProps }, preview: <><svg width="40" height="40" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" fill="#3b82f6" /></svg><span className="text-xs mt-1">Rectangle</span></> },
     { name: 'Ellipse', element: { type: 'shape', shapeType: 'ellipse', width: 150, height: 100, ...defaultShapeProps }, preview: <><svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="7" fill="#3b82f6" /></svg><span className="text-xs mt-1">Ellipse</span></> },
@@ -837,7 +898,6 @@ const iconDefinitions: ElementDef<ShapeElement>[] = rawIconDefinitions.map(icon 
 
 const placeholderImageSrc = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI0U1RTdFQiIvPjxwYXRoIGQ9Ik04MCA3MCBMNjAgNDAgTDQ1IDYwIEwzMCA1MCBMMjAgNzAgSCA4MCBaIiBmaWxsPSIjRERERUZFIi8+PGNpcmNsZSBjeD0iMzUiIGN5PSIzNSIgcj0iOCIgZmlsbD0iI0Y5RkFGQiIvPjwvc3ZnPg==";
 const defaultFrameProps = { src: placeholderImageSrc, width: 150, height: 150, flipHorizontal: false, flipVertical: false };
-// FIX: Use ElementDef<ImageElement> to correctly type the array of frame definitions, allowing image-specific properties.
 const frameDefinitions: ElementDef<ImageElement>[] = [
     { name: 'Circle', element: { type: 'image', ...defaultFrameProps, frameShape: 'circle' }, preview: <><div className="w-10 h-10 rounded-full bg-gray-500" /><span className="text-xs mt-1">Circle</span></> },
     { name: 'Arch', element: { type: 'image', ...defaultFrameProps, frameShape: 'arch' }, preview: <><div className="w-10 h-10 bg-gray-500" style={{ clipPath: 'path("M 0 100 V 50 C 0 22.38 22.38 0 50 0 C 77.62 0 100 22.38 100 50 V 100 Z")' }}/><span className="text-xs mt-1">Arch</span></> },
@@ -847,7 +907,6 @@ const frameDefinitions: ElementDef<ImageElement>[] = [
     { name: 'Rounded', element: { type: 'image', ...defaultFrameProps, borderRadius: 20 }, preview: <><div className="w-10 h-10 bg-gray-500 rounded-lg" /><span className="text-xs mt-1">Rounded</span></> },
 ];
 
-// FIX: Specify the return type as ElementDef<ImageElement> to ensure type safety for image-specific properties like `src`.
 const createImageElementDef = (name: string, svg: string): ElementDef<ImageElement> => {
     const base64Svg = btoa(svg);
     const dataUri = `data:image/svg+xml;base64,${base64Svg}`;
@@ -868,7 +927,6 @@ const createImageElementDef = (name: string, svg: string): ElementDef<ImageEleme
     };
 };
 
-// FIX: Use ElementDef<ImageElement> to correctly type the array of graphic definitions.
 const graphicsDefinitions: ElementDef<ImageElement>[] = [
     createImageElementDef('Flower', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="15" fill="#FFD700"/><circle cx="50" cy="25" r="12" fill="#FF69B4"/><circle cx="75" cy="40" r="12" fill="#FF69B4"/><circle cx="70" cy="70" r="12" fill="#FF69B4"/><circle cx="30" cy="70" r="12" fill="#FF69B4"/><circle cx="25" cy="40" r="12" fill="#FF69B4"/></svg>'),
     createImageElementDef('House', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,10 90,40 90,90 10,90 10,40" fill="#A52A2A"/><rect x="20" y="40" width="60" height="50" fill="#F5DEB3"/><rect x="40" y="60" width="20" height="30" fill="#8B4513"/></svg>'),
@@ -877,7 +935,6 @@ const graphicsDefinitions: ElementDef<ImageElement>[] = [
     createImageElementDef('Cat', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 20,80 C 20,60 30,50 50,50 C 70,50 80,60 80,80 L 80,90 L 20,90 Z" fill="#888"/><circle cx="50" cy="40" r="25" fill="#AAA"/><path d="M 40,20 L 30,10 L 40,30 Z" fill="#333"/><path d="M 60,20 L 70,10 L 60,30 Z" fill="#333"/><circle cx="40" cy="40" r="3" fill="#000"/><circle cx="60" cy="40" r="3" fill="#000"/><path d="M 45,50 Q 50,55 55,50" stroke="#000" fill="none" stroke-width="2"/></svg>'),
 ];
 
-// FIX: Use ElementDef<ImageElement> to correctly type the array of social media definitions.
 const socialMediaDefinitions: ElementDef<ImageElement>[] = [
     createImageElementDef('Facebook', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#1877F2" d="M504 256C504 119 393 8 256 8S8 119 8 256c0 123.78 90.69 226.38 209.25 245V327.69h-63V256h63v-54.64c0-62.15 37-96.48 93.67-96.48 27.14 0 55.52 4.84 55.52 4.84v61h-31.28c-30.8 0-40.41 19.12-40.41 38.73V256h68.78l-11 71.69h-57.78V501C413.31 482.38 504 379.78 504 256z"/></svg>'),
     createImageElementDef('Instagram', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><defs><radialGradient id="ig-grad" cx="0.3" cy="1" r="1"><stop offset="0" stop-color="#FDCB52"/><stop offset="0.5" stop-color="#FD1D1D"/><stop offset="1" stop-color="#833AB4"/></radialGradient></defs><path fill="url(#ig-grad)" d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9 26.3 26.2 58 34.4 93.9 36.2 37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>'),

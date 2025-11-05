@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Accordion from './Accordion';
 import { CanvasElement } from '../types';
 
@@ -22,6 +22,14 @@ const AIPanel: React.FC<AIPanelProps> = ({
   const [aiContent, setAiContent] = useState('');
   const [aiCommand, setAiCommand] = useState('');
 
+  const isAiImageEditingDisabled = useMemo(() => {
+    if (selectedElementIds.length !== 1 || !singleSelectedElement) return false;
+    if (singleSelectedElement.type === 'image' && singleSelectedElement.src.startsWith('data:image/svg+xml')) {
+      return true;
+    }
+    return false;
+  }, [selectedElementIds, singleSelectedElement]);
+
   const getDesignerPlaceholder = () => {
     if (selectedElementIds.length === 0) {
       return "Select an element to edit";
@@ -31,6 +39,9 @@ const AIPanel: React.FC<AIPanelProps> = ({
     }
     if (singleSelectedElement) {
       if (singleSelectedElement.type === 'image') {
+        if (isAiImageEditingDisabled) {
+          return "AI editing is not supported for vector graphics (SVGs).";
+        }
         return "e.g., 'add a birthday hat'";
       }
       if (singleSelectedElement.type === 'text') {
@@ -62,7 +73,10 @@ const AIPanel: React.FC<AIPanelProps> = ({
       </Accordion>
       <Accordion title="AI Designer" defaultOpen>
         <p className="text-xs text-gray-500 mb-2">
-          Select an element on the canvas and give the AI a command to modify it.
+          {isAiImageEditingDisabled
+            ? "Select a raster image (JPG, PNG) to enable AI editing."
+            : "Select an element on the canvas and give the AI a command to modify it."
+          }
         </p>
         <textarea
           rows={3}
@@ -70,14 +84,14 @@ const AIPanel: React.FC<AIPanelProps> = ({
           onChange={(e) => setAiCommand(e.target.value)}
           placeholder={getDesignerPlaceholder()}
           className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={selectedElementIds.length === 0}
+          disabled={selectedElementIds.length === 0 || isAiImageEditingDisabled}
         />
         <button
           onClick={() => {
             onApplyStyles(aiCommand);
             setAiCommand('');
           }}
-          disabled={isProcessing || !aiCommand.trim() || selectedElementIds.length === 0}
+          disabled={isProcessing || !aiCommand.trim() || selectedElementIds.length === 0 || isAiImageEditingDisabled}
           className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"
         >
           {isProcessing ? 'Designing...' : 'Apply Change'}

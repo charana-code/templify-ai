@@ -21,19 +21,26 @@ const parseDataUri = (dataUri: string): { mimeType: string; data: string } | nul
 
 export const generateImageWithAI = async (prompt: string): Promise<string> => {
   try {
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt: prompt,
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          {
+            text: prompt,
+          },
+        ],
+      },
       config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1',
+        responseModalities: [Modality.IMAGE],
       },
     });
 
-    if (response.generatedImages && response.generatedImages.length > 0) {
-      const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-      return `data:image/jpeg;base64,${base64ImageBytes}`;
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        const base64ImageBytes: string = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType || 'image/png';
+        return `data:${mimeType};base64,${base64ImageBytes}`;
+      }
     }
     throw new Error("AI did not return an image.");
   } catch (error) {
@@ -274,5 +281,48 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
   } catch (error) {
     console.error("Error with Gemini API (applyBulkStylesWithAI):", error);
     throw new Error("Failed to apply bulk styles using AI.");
+  }
+};
+
+export const generateIconWithAI = async (prompt: string): Promise<{ path: string; viewBox: string }> => {
+  const generationPrompt = `You are an SVG icon generator. Based on the user's prompt, create a single, simple, flat, monochrome SVG icon.
+  - The icon should be clean and minimalist.
+  - The icon should be a single path if possible. Combine shapes into a compound path.
+  - The SVG MUST have a viewBox attribute (e.g., "0 0 24 24").
+  - The fill color of the path(s) MUST be "currentColor". Do not use any other colors.
+  - Do not include any XML declaration, comments, or other metadata.
+  - Only return a JSON object with two properties: "pathData" (the 'd' attribute of the path), and "viewBox" (the 'viewBox' attribute of the svg).
+
+  User Prompt: "${prompt}"
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: generationPrompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            pathData: { type: Type.STRING, description: "The 'd' attribute from the SVG path." },
+            viewBox: { type: Type.STRING, description: "The 'viewBox' attribute from the <svg> tag." },
+          },
+          required: ['pathData', 'viewBox'],
+        },
+      },
+    });
+
+    const resultText = response.text.trim();
+    const parsedResult = JSON.parse(resultText);
+
+    if (parsedResult.pathData && parsedResult.viewBox) {
+      return { path: parsedResult.pathData, viewBox: parsedResult.viewBox };
+    } else {
+      throw new Error("AI did not return valid path data and viewBox.");
+    }
+  } catch (error) {
+    console.error("Error with Gemini API (generateIconWithAI):", error);
+    throw new Error("Failed to generate icon using AI.");
   }
 };

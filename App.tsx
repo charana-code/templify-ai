@@ -17,6 +17,7 @@ import { useDesignState } from './hooks/useDesignState';
 const App: React.FC = () => {
   const {
     artboardSize,
+    artboardBackgroundColor,
     handleArtboardSelect,
     elements,
     elementsToRender,
@@ -184,31 +185,53 @@ const App: React.FC = () => {
               <svg className={`w-4 h-4 transition-transform transform group-hover:scale-125 ${isDetailsPanelCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
             </button>
         </div>
-        <main ref={mainContainerRef} className="flex-1 flex flex-col relative bg-gray-800">
+        <main ref={mainContainerRef} className="flex-1 flex flex-col relative bg-gray-800 min-w-0">
           <div
             ref={editorContainerRef}
             onMouseDown={handleMouseDownOnContainer}
             className={`flex-1 w-full h-full overflow-auto ${isPanning ? 'cursor-grab' : ''}`}
           >
-            <div className="min-h-full min-w-full p-4 flex justify-center items-center">
-              <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.2s ease-in-out' }}>
-                <Editor
-                  ref={editorRef}
-                  artboardSize={artboardSize}
-                  elements={elementsToRender}
-                  selectedElementIds={selectedElementIds}
-                  draggingElementId={draggingElementId}
-                  guides={[...guides, ...gridLines]}
-                  zoom={zoom}
-                  editingGroup={activeGroup ?? null}
-                  onAddElement={handleAddElement}
-                  onAddTemplate={handleAddTemplate}
-                  onElementMouseDown={handleElementMouseDown}
-                  onUpdateElement={handleUpdateElement}
-                  onResizeStart={handleResizeStart}
-                  onRotationStart={handleRotationStart}
-                  onElementDoubleClick={handleElementDoubleClick}
-                />
+            <div className="min-h-full min-w-full flex items-center justify-center">
+              <div className="p-16">
+                <div
+                  style={{
+                    width: artboardSize.width * zoom,
+                    height: artboardSize.height * zoom,
+                    transition: 'width 0.2s ease-in-out, height 0.2s ease-in-out',
+                    ...(artboardBackgroundColor === 'transparent' && {
+                      backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+                      backgroundSize: '20px 20px',
+                      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                    })
+                  }}
+                >
+                  <div
+                    style={{
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                    }}
+                  >
+                    <Editor
+                      ref={editorRef}
+                      artboardSize={artboardSize}
+                      artboardBackgroundColor={artboardBackgroundColor}
+                      elements={elementsToRender}
+                      selectedElementIds={selectedElementIds}
+                      draggingElementId={draggingElementId}
+                      guides={[...guides, ...gridLines]}
+                      zoom={zoom}
+                      editingGroup={activeGroup ?? null}
+                      isPanning={isPanning}
+                      onAddElement={handleAddElement}
+                      onAddTemplate={handleAddTemplate}
+                      onElementMouseDown={handleElementMouseDown}
+                      onUpdateElement={handleUpdateElement}
+                      onResizeStart={handleResizeStart}
+                      onRotationStart={handleRotationStart}
+                      onElementDoubleClick={handleElementDoubleClick}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
