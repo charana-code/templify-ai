@@ -641,50 +641,112 @@ export const useDesignState = () => {
     
     let snapDx = 0;
     let snapDy = 0;
-    const newGuides: Guide[] = [];
     const SNAP_THRESHOLD = 5 / zoom;
+    const newGuides: Guide[] = [];
 
-    const artboardTarget = {
-        left: 0, centerX: artboardSize.width / 2, right: artboardSize.width,
-        top: 0, centerY: artboardSize.height / 2, bottom: artboardSize.height,
-    };
-    const elementTargets = otherElements.map(el => ({
-        left: el.x, centerX: el.x + el.width / 2, right: el.x + el.width,
-        top: el.y, centerY: el.y + el.height / 2, bottom: el.y + el.height,
-    }));
-    const allTargets = [artboardTarget, ...elementTargets];
-
-    let bestXSnap = { diff: Infinity, targetValue: 0 };
-    for (const target of allTargets) {
-        for (const draggedEdge of ['left', 'centerX', 'right'] as const) {
-            for (const targetEdge of ['left', 'centerX', 'right'] as const) {
-                const diff = Math.abs(draggedBounds[draggedEdge] - target[targetEdge]);
-                if (diff < SNAP_THRESHOLD && diff < bestXSnap.diff) {
-                    bestXSnap = { diff, targetValue: target[targetEdge] };
-                    snapDx = draggedBounds[draggedEdge] - target[targetEdge];
+    // --- Grid Intersection Snapping ---
+    let gridSnappedX = false;
+    let gridSnappedY = false;
+    if (gridGuidesConfig.isVisible) {
+        const intersectionPoints: { x: number; y: number }[] = [];
+        const { cols, rows, gutterSize } = gridGuidesConfig;
+        const { width, height } = artboardSize;
+        const safeGutter = Math.max(0, gutterSize);
+        const effectiveWidth = width - (safeGutter * 2);
+        const effectiveHeight = height - (safeGutter * 2);
+        if (effectiveWidth > 0 && effectiveHeight > 0) {
+            const xCoords: number[] = [];
+            const yCoords: number[] = [];
+            for (let i = 0; i <= cols; i++) xCoords.push(safeGutter + (effectiveWidth / cols) * i);
+            for (let i = 0; i <= rows; i++) yCoords.push(safeGutter + (effectiveHeight / rows) * i);
+            for (const x of xCoords) {
+                for (const y of yCoords) {
+                    intersectionPoints.push({ x, y });
                 }
             }
         }
-    }
-    
-    let bestYSnap = { diff: Infinity, targetValue: 0 };
-    for (const target of allTargets) {
-        for (const draggedEdge of ['top', 'centerY', 'bottom'] as const) {
-            for (const targetEdge of ['top', 'centerY', 'bottom'] as const) {
-                const diff = Math.abs(draggedBounds[draggedEdge] - target[targetEdge]);
-                if (diff < SNAP_THRESHOLD && diff < bestYSnap.diff) {
-                    bestYSnap = { diff, targetValue: target[targetEdge] };
-                    snapDy = draggedBounds[draggedEdge] - target[targetEdge];
+
+        if (intersectionPoints.length > 0) {
+            const topLeft = { x: draggedBounds.left, y: draggedBounds.top };
+            
+            let nearestPoint = intersectionPoints[0];
+            let minDistanceSq = Infinity;
+
+            for (const point of intersectionPoints) {
+                const distSq = (point.x - topLeft.x)**2 + (point.y - topLeft.y)**2;
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    nearestPoint = point;
                 }
+            }
+            
+            const diffX = topLeft.x - nearestPoint.x;
+            const diffY = topLeft.y - nearestPoint.y;
+
+            if (Math.abs(diffX) < SNAP_THRESHOLD) {
+                snapDx = diffX;
+                gridSnappedX = true;
+                newGuides.push({ x1: nearestPoint.x, y1: 0, x2: nearestPoint.x, y2: artboardSize.height, type: 'snap' });
+            }
+            if (Math.abs(diffY) < SNAP_THRESHOLD) {
+                snapDy = diffY;
+                gridSnappedY = true;
+                newGuides.push({ x1: 0, y1: nearestPoint.y, x2: artboardSize.width, y2: nearestPoint.y, type: 'snap' });
             }
         }
     }
 
-    if (bestXSnap.diff !== Infinity) {
-        newGuides.push({ x1: bestXSnap.targetValue, y1: 0, x2: bestXSnap.targetValue, y2: artboardSize.height, type: 'snap' });
-    }
-    if (bestYSnap.diff !== Infinity) {
-        newGuides.push({ x1: 0, y1: bestYSnap.targetValue, x2: artboardSize.width, y2: bestYSnap.targetValue, type: 'snap' });
+    // --- Edge-to-Edge Snapping ---
+    if (!gridSnappedX || !gridSnappedY) {
+        const artboardTarget = {
+            left: 0, centerX: artboardSize.width / 2, right: artboardSize.width,
+            top: 0, centerY: artboardSize.height / 2, bottom: artboardSize.height,
+        };
+        const elementTargets = otherElements.map(el => ({
+            left: el.x, centerX: el.x + el.width / 2, right: el.x + el.width,
+            top: el.y, centerY: el.y + el.height / 2, bottom: el.y + el.height,
+        }));
+        const allEdgeTargets = [artboardTarget, ...elementTargets];
+
+        if (!gridSnappedX) {
+            let bestXSnap = { diff: Infinity, snapOffset: 0, targetValue: 0 };
+            for (const target of allEdgeTargets) {
+                for (const draggedEdge of ['left', 'centerX', 'right'] as const) {
+                    for (const targetEdge of ['left', 'centerX', 'right'] as const) {
+                        const diff = draggedBounds[draggedEdge] - target[targetEdge];
+                        if (Math.abs(diff) < SNAP_THRESHOLD && Math.abs(diff) < bestXSnap.diff) {
+                            bestXSnap = { diff: Math.abs(diff), snapOffset: diff, targetValue: target[targetEdge] };
+                        }
+                    }
+                }
+            }
+            if (bestXSnap.diff < SNAP_THRESHOLD) {
+                snapDx = bestXSnap.snapOffset;
+                if (!newGuides.some(g => g.x1 === bestXSnap.targetValue && g.x2 === bestXSnap.targetValue)) {
+                    newGuides.push({ x1: bestXSnap.targetValue, y1: 0, x2: bestXSnap.targetValue, y2: artboardSize.height, type: 'snap' });
+                }
+            }
+        }
+        
+        if (!gridSnappedY) {
+            let bestYSnap = { diff: Infinity, snapOffset: 0, targetValue: 0 };
+            for (const target of allEdgeTargets) {
+                for (const draggedEdge of ['top', 'centerY', 'bottom'] as const) {
+                    for (const targetEdge of ['top', 'centerY', 'bottom'] as const) {
+                        const diff = draggedBounds[draggedEdge] - target[targetEdge];
+                        if (Math.abs(diff) < SNAP_THRESHOLD && Math.abs(diff) < bestYSnap.diff) {
+                            bestYSnap = { diff: Math.abs(diff), snapOffset: diff, targetValue: target[targetEdge] };
+                        }
+                    }
+                }
+            }
+            if (bestYSnap.diff < SNAP_THRESHOLD) {
+                snapDy = bestYSnap.snapOffset;
+                 if (!newGuides.some(g => g.y1 === bestYSnap.targetValue && g.y2 === bestYSnap.targetValue)) {
+                    newGuides.push({ x1: 0, y1: bestYSnap.targetValue, x2: artboardSize.width, y2: bestYSnap.targetValue, type: 'snap' });
+                }
+            }
+        }
     }
     
     setGuides(newGuides);
@@ -701,7 +763,7 @@ export const useDesignState = () => {
         });
         return updatedElements;
     });
-  }, [zoom, elements, artboardSize, elementsOnCanvas, activeGroup]);
+  }, [zoom, elementsOnCanvas, artboardSize, gridGuidesConfig, activeGroup]);
 
   const handleDocumentMouseUp = useCallback(() => {
     document.body.style.userSelect = '';
@@ -1311,6 +1373,12 @@ export const useDesignState = () => {
         
         if (isInputFocused) return;
 
+        if ((e.ctrlKey || e.metaKey) && e.key === ';') {
+          e.preventDefault();
+          setGridGuidesConfig(prev => ({ ...prev, isVisible: !prev.isVisible }));
+          return;
+        }
+
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
           e.preventDefault();
           let allSelectableIds: string[];
@@ -1376,7 +1444,7 @@ export const useDesignState = () => {
       };
     }, [
         undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, 
-        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId, fitToScreen, handleSetZoom, setIsPanning
+        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId, fitToScreen, handleSetZoom, setIsPanning, setGridGuidesConfig
     ]);
 
     const withErrorHandling = <T extends any[]>(fn: (...args: T) => Promise<void>) => {
