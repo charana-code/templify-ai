@@ -264,6 +264,7 @@ const App: React.FC = () => {
                 editingGroupId={editingGroup?.id ?? null}
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}
+                // FIX: Pass the correct handler functions from the useDesignState hook.
                 onGroup={handleGroup}
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}

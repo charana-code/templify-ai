@@ -271,12 +271,33 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         if (imgEl.flipHorizontal) imgTransforms.push('scaleX(-1)');
         if (imgEl.flipVertical) imgTransforms.push('scaleY(-1)');
 
+        const imageStyles: React.CSSProperties = {
+            transform: imgTransforms.join(' '),
+        };
+
+        if (imgEl.frameShape) {
+            switch (imgEl.frameShape) {
+                case 'circle':
+                    imageStyles.clipPath = 'circle(50% at 50% 50%)';
+                    break;
+                case 'arch':
+                    imageStyles.clipPath = 'path("M 0 100 V 50 C 0 22.38 22.38 0 50 0 C 77.62 0 100 22.38 100 50 V 100 Z")';
+                    break;
+                case 'polygon-6':
+                    imageStyles.clipPath = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)';
+                    break;
+                case 'star-5':
+                    imageStyles.clipPath = 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)';
+                    break;
+            }
+        }
+
         return (
           <img
             src={imgEl.src}
             alt="canvas element"
             className="w-full h-full object-cover pointer-events-none"
-            style={{ transform: imgTransforms.join(' ') }}
+            style={imageStyles}
             draggable={false}
           />
         );
@@ -313,7 +334,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             strokeLinecap: shapeEl.strokeDash === 'dotted' ? 'round' as const : undefined,
           };
           return (
-            <svg width="100%" height="100%" viewBox={`0 0 ${shapeEl.width} ${shapeEl.height}`} style={{ overflow: 'visible' }}>
+            <svg
+              width="100%"
+              height="100%"
+              viewBox={shapeEl.shapeType === 'icon' && shapeEl.viewBox ? shapeEl.viewBox : `0 0 ${shapeEl.width} ${shapeEl.height}`}
+              preserveAspectRatio={shapeEl.shapeType === 'icon' ? 'xMidYMid meet' : undefined}
+              style={{ overflow: 'visible' }}
+            >
               {(() => {
                 switch (shapeEl.shapeType) {
                   case 'rectangle':
@@ -332,6 +359,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
                   case 'line':
                     // FIX: Use the calculated svgProps for strokeLinecap to ensure consistent styling, especially for dotted lines.
                     return <line x1={svgProps.strokeWidth / 2} y1={shapeEl.height / 2} x2={shapeEl.width - svgProps.strokeWidth / 2} y2={shapeEl.height / 2} stroke={svgProps.stroke} strokeWidth={svgProps.strokeWidth} strokeLinecap={svgProps.strokeLinecap ?? 'butt'} strokeDasharray={svgProps.strokeDasharray} />;
+                  case 'icon':
+                    return <path d={shapeEl.path} {...svgProps} />;
                   default:
                     return null;
                 }

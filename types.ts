@@ -1,4 +1,3 @@
-
 // FIX: Removed self-import of CanvasElement.
 export type ElementType = 'text' | 'image' | 'group' | 'shape';
 
@@ -39,6 +38,7 @@ export interface ImageElement extends BaseElement {
   src: string;
   flipHorizontal: boolean;
   flipVertical: boolean;
+  frameShape?: 'circle' | 'arch' | 'polygon-6' | 'star-5';
 }
 
 export interface GroupElement extends BaseElement {
@@ -46,7 +46,7 @@ export interface GroupElement extends BaseElement {
     elements: CanvasElement[];
 }
 
-export type ShapeType = 'rectangle' | 'ellipse' | 'triangle' | 'polygon' | 'star' | 'line';
+export type ShapeType = 'rectangle' | 'ellipse' | 'triangle' | 'polygon' | 'star' | 'line' | 'icon';
 
 export interface ShapeElement extends BaseElement {
   type: 'shape';
@@ -60,6 +60,9 @@ export interface ShapeElement extends BaseElement {
   // For star
   points?: number;
   innerRadiusRatio?: number;
+  // For icon
+  path?: string;
+  viewBox?: string;
 }
 
 
