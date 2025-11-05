@@ -123,15 +123,6 @@ const App: React.FC = () => {
             onChange={handleGridGuidesConfigChange}
           />
           <div className="h-6 w-px bg-gray-600"></div>
-          <button
-            onClick={handleSaveDesign}
-            disabled={!isDirty}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-md text-sm font-semibold transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
-            aria-label="Save Design"
-            title="Save Design (Ctrl+S)"
-          >
-            {isDirty ? '💾 Save' : '✅ Saved'}
-          </button>
           
           <ZoomControl 
               zoom={zoom}
