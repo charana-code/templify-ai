@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CanvasElement, TextElement, ShapeElement, ImageElement, GroupElement } from '../types';
 import { generateImageWithAI, editImageWithAI, generateIconWithAI } from '../services/geminiService';
 import Accordion from './Accordion';
@@ -202,14 +202,57 @@ const TextToolPanel = () => {
   );
 };
 
+const USER_IMAGES_STORAGE_KEY = 'gemini-design-studio-user-images';
+const IMAGE_LAYOUT_STORAGE_KEY = 'gemini-design-studio-image-layout';
+
 const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id'>) => void; }> = ({ onAddElement }) => {
-    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const [uploadedImages, setUploadedImages] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem(USER_IMAGES_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            }
+        } catch (error) {
+            console.error("Could not load user images from local storage:", error);
+        }
+        return [];
+    });
     const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [processingImageSrc, setProcessingImageSrc] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [imageLayout, setImageLayout] = useState<'grid' | 'list'>('list');
+    const [imageLayout, setImageLayout] = useState<'grid' | 'list'>(() => {
+        try {
+            const savedLayout = localStorage.getItem(IMAGE_LAYOUT_STORAGE_KEY);
+            if (savedLayout === 'grid' || savedLayout === 'list') {
+                return savedLayout;
+            }
+        } catch (error) {
+            console.error("Could not load image layout from local storage:", error);
+        }
+        return 'list'; // Default value
+    });
     const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(USER_IMAGES_STORAGE_KEY, JSON.stringify(uploadedImages));
+        } catch (error) {
+            console.error("Could not save user images to local storage:", error);
+        }
+    }, [uploadedImages]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(IMAGE_LAYOUT_STORAGE_KEY, imageLayout);
+        } catch (error) {
+            console.error("Could not save image layout to local storage:", error);
+        }
+    }, [imageLayout]);
+
 
     const processFiles = (files: FileList | null) => {
         if (!files) return;
