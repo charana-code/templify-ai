@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { CanvasElement, TextElement, ShapeElement } from '../types';
-import { generateImageWithAI } from '../services/geminiService';
+import { generateImageWithAI, editImageWithAI } from '../services/geminiService';
+import Accordion from './Accordion';
 
 const DraggableTextPreset: React.FC<{
   label: string;
@@ -126,30 +127,40 @@ const TextToolPanel = () => (
 );
 
 const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id'>) => void; }> = ({ onAddElement }) => {
-    const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+    const [uploadedImages, setUploadedImages] = useState<string[]>([]);
     const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [processingImageSrc, setProcessingImageSrc] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [imageLayout, setImageLayout] = useState<'grid' | 'list'>('list');
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setUploadedImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        const files = e.target.files;
+        if (files) {
+            // FIX: Use a standard for-loop with files.item(i) for safer iteration over FileList.
+            // This avoids potential type inference issues with `Array.from(files)`.
+            for (let i = 0; i < files.length; i++) {
+                const file = files.item(i);
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if (reader.result) {
+                            setUploadedImages(prev => [reader.result as string, ...prev]);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+            e.target.value = '';
         }
     };
 
     const handleDragStart = (e: React.DragEvent, src: string) => {
-        const img = new Image();
-        img.src = src;
         const element = {
-            type: 'image',
+            type: 'image' as const,
             src: src,
-            width: img.width > 400 ? 400 : img.width,
-            height: img.height > 300 ? 300 : img.height,
+            width: 300,
+            height: 300,
             flipHorizontal: false,
             flipVertical: false,
         };
@@ -161,7 +172,8 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
         setIsGenerating(true);
         try {
             const newImageSrc = await generateImageWithAI(aiPrompt);
-            setUploadedImage(newImageSrc);
+            setUploadedImages(prev => [newImageSrc, ...prev]);
+            setAiPrompt('');
         } catch (error) {
             console.error(error);
             alert("Failed to generate image. See console for details.");
@@ -170,54 +182,143 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
         }
     };
 
+    const handleRemoveBackground = async (imageSrc: string, index: number) => {
+        setProcessingImageSrc(imageSrc);
+        try {
+            const newImageSrc = await editImageWithAI(imageSrc, "Analyze the provided image and identify the main subject. Create a segmentation mask for this subject. Your final output must be a PNG image where only the segmented subject is visible and the background is fully transparent (alpha channel value of 0). It is critical that you do not render a checkerboard or any other pattern in place of the background.");
+            setUploadedImages(prev => prev.map((src, i) => (i === index ? newImageSrc : src)));
+        } catch (error) {
+            console.error(error);
+            alert("Failed to remove background. See console for details.");
+        } finally {
+            setProcessingImageSrc(null);
+        }
+    };
+    
+    const handleDeleteImage = (indexToDelete: number) => {
+        setUploadedImages(prev => prev.filter((_, index) => index !== indexToDelete));
+    };
+
+
     return (
-        <div className="p-4 space-y-4">
-            <h3 className="text-lg font-bold text-gray-400">Add Image</h3>
-            <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded transition-colors"
-            >
-                Upload from device
-            </button>
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-            />
-            
-            <div className="w-full border-t border-gray-700 my-2"></div>
-            
-            <h3 className="text-lg font-bold text-gray-400">Generate with AI</h3>
-            <textarea
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="e.g., a blue robot holding a red skateboard"
-              className="w-full h-24 bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-             <button
-              onClick={handleGenerateClick}
-              disabled={isGenerating || !aiPrompt.trim()}
-              className="w-full mt-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"
-            >
-              {isGenerating ? 'Generating...' : 'Generate Image'}
-            </button>
-
-
-            {uploadedImage && (
-                <>
-                    <div className="w-full border-t border-gray-700 my-2"></div>
-                    <p className="text-xs text-center text-gray-500">Drag your image onto the canvas</p>
-                    <div
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, uploadedImage)}
-                        className="p-2 bg-gray-700 rounded-lg cursor-grab"
+        <div className="p-4 flex flex-col h-full">
+            <div className="shrink-0">
+                <Accordion title="Generate with AI" defaultOpen>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="e.g., a blue robot holding a red skateboard"
+                      className="w-full h-24 bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                     <button
+                      onClick={handleGenerateClick}
+                      disabled={isGenerating}
+                      className="w-full mt-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded transition-colors"
                     >
-                        <img src={uploadedImage} alt="Uploaded preview" className="max-w-full max-h-48 object-contain mx-auto" />
+                      {isGenerating ? 'Generating...' : 'Generate Image'}
+                    </button>
+                </Accordion>
+            </div>
+            
+            <div className="flex flex-col flex-grow min-h-0 pt-4 space-y-2">
+                <div className="flex justify-between items-center shrink-0">
+                    <h3 className="text-lg font-bold text-gray-400">Your Images</h3>
+                     <div className="flex items-center space-x-2">
+                        {uploadedImages.length > 0 && (
+                            <div className="flex items-center space-x-1 p-0.5 bg-gray-800 rounded-md border border-gray-700">
+                                <button
+                                    onClick={() => setImageLayout('list')}
+                                    className={`p-1 rounded ${imageLayout === 'list' ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'}`}
+                                    title="List view"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => setImageLayout('grid')}
+                                    className={`p-1 rounded ${imageLayout === 'grid' ? 'bg-blue-600 text-white' : 'hover:bg-gray-600'}`}
+                                    title="Grid view"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="p-2 rounded-full hover:bg-gray-700 transition-colors"
+                            title="Upload new images"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
-                </>
-            )}
+                </div>
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                    multiple
+                />
+
+                {uploadedImages.length > 0 ? (
+                    <div className="flex-grow overflow-y-auto -mr-2 pr-2">
+                        <div className={`${imageLayout === 'grid' ? 'grid grid-cols-2 gap-2' : 'flex flex-col space-y-2'}`}>
+                           {uploadedImages.map((src, index) => (
+                                <div
+                                    key={`${src.substring(0, 20)}-${index}`}
+                                    draggable={!processingImageSrc}
+                                    onDragStart={(e) => handleDragStart(e, src)}
+                                    className={`group relative bg-gray-700 rounded-lg cursor-grab flex items-center justify-center ${imageLayout === 'grid' ? 'aspect-square' : ''}`}
+                                >
+                                    <img src={src} alt={`Uploaded preview ${index + 1}`} className="max-w-full max-h-full object-contain rounded-lg" />
+                                    
+                                    {processingImageSrc === src && (
+                                        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center rounded-lg">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                        </div>
+                                    )}
+                                    
+                                    {!processingImageSrc && (
+                                        <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center space-y-2 rounded-lg p-2">
+                                            <button
+                                                onClick={() => handleRemoveBackground(src, index)}
+                                                className="flex items-center justify-center w-full max-w-[130px] px-2 py-1.5 rounded bg-white/20 hover:bg-blue-600 text-white text-xs font-semibold transition-colors backdrop-blur-sm"
+                                                title="Remove Background"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                                                  <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 110-2h1V3a1 1 0 011-1zM13 10a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1z" clipRule="evenodd" />
+                                                  <path d="M11 14a1 1 0 100 2h1a1 1 0 100-2h-1z" />
+                                                </svg>
+                                                <span>Remove BG</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteImage(index)}
+                                                className="flex items-center justify-center w-full max-w-[130px] px-2 py-1.5 rounded bg-white/20 hover:bg-red-600 text-white text-xs font-semibold transition-colors backdrop-blur-sm"
+                                                title="Delete Image"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-center text-xs text-gray-500 p-4 border-2 border-dashed border-gray-700 rounded-lg flex-grow flex items-center justify-center">
+                        <span>Upload images to see them here.</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -478,7 +579,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
   };
 
   return (
-    <div className="w-80 shrink-0 bg-gray-900 text-white overflow-y-auto">
+    <div className="w-full h-full bg-gray-900 text-white flex flex-col">
       {renderContent()}
     </div>
   );

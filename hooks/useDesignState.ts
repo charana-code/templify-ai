@@ -312,25 +312,45 @@ export const useDesignState = () => {
   }, [setElements, liveElements, activeGroup]);
 
   const handleUpdateSelectedElements = useCallback((updates: Partial<CanvasElement>) => {
-    const updater = (prevElements: CanvasElement[]) => {
+    const updater = (prevElements: CanvasElement[]): CanvasElement[] => {
         const selectedIdsSet = new Set(selectedElementIds);
+
+        const applyUpdates = (el: CanvasElement): CanvasElement => {
+            if (!selectedIdsSet.has(el.id)) {
+                return el;
+            }
+            // FIX: Use a switch statement to safely apply updates to discriminated unions.
+            // This helps TypeScript validate the base type (`el`) before spreading a generic
+            // `updates` object, preventing type errors. The `updates` object is cast
+            // to the specific partial type as a pragmatic way to handle generic updates.
+            switch(el.type) {
+                case 'text':
+                    return { ...el, ...(updates as Partial<TextElement>) };
+                case 'image':
+                    return { ...el, ...(updates as Partial<ImageElement>) };
+                case 'shape':
+                    return { ...el, ...(updates as Partial<ShapeElement>) };
+                case 'group':
+                    return { ...el, ...(updates as Partial<GroupElement>) };
+            }
+        };
+
         if (editingGroupId) {
             return prevElements.map(el => {
                 if (el.id === editingGroupId && el.type === 'group') {
-                    const updatedChildren = el.elements.map(child =>
-                        selectedIdsSet.has(child.id) ? { ...child, ...updates } as CanvasElement : child
-                    );
-                    return { ...el, elements: updatedChildren };
+                    const updatedChildren = el.elements.map(applyUpdates);
+                    // Also apply updates to the group itself if it's selected
+                    const updatedGroup = selectedIdsSet.has(el.id) ? applyUpdates(el) as GroupElement : el;
+                    return { ...updatedGroup, elements: updatedChildren };
                 }
                 return el;
             });
         }
-        return prevElements.map(el =>
-            selectedIdsSet.has(el.id) ? { ...el, ...updates } as CanvasElement : el
-        );
+        return prevElements.map(applyUpdates);
     };
+
     if (liveElements) {
-        setLiveElements(updater);
+        setLiveElements(prev => prev ? updater(prev) : null);
     } else {
         setElements(updater);
     }
@@ -470,8 +490,15 @@ export const useDesignState = () => {
         const elementsStart = dragInfo.current.elementsStart;
         setLiveElements(currentLiveElements => {
             if (currentLiveElements) {
-                const finalElementsOnCanvas = activeGroup
-                    ? (currentLiveElements.find(g => g.id === editingGroupId) as GroupElement)?.elements.map(el => ({...el, x: el.x + activeGroup.x, y: el.y + activeGroup.y})) ?? []
+                // FIX: This resolves a stale closure issue by recalculating the active group
+                // based on the most recent state (`currentLiveElements`) inside the updater function.
+                // It also fixes a potential bug where a typo `editingGroup` might have been used instead of `activeGroup`.
+                const currentActiveGroup = editingGroupId ?
+                    currentLiveElements.find(el => el.id === editingGroupId && el.type === 'group') as GroupElement | undefined
+                    : undefined;
+                
+                const finalElementsOnCanvas = currentActiveGroup
+                    ? currentActiveGroup.elements.map(el => ({...el, x: el.x + currentActiveGroup.x, y: el.y + currentActiveGroup.y})) ?? []
                     : currentLiveElements;
                 const hasMoved = finalElementsOnCanvas.some(el => {
                     const startPos = elementsStart.find(s => s.id === el.id);
@@ -485,7 +512,7 @@ export const useDesignState = () => {
     setGuides([]);
     setDraggingElementId(null);
     dragInfo.current = null;
-  }, [handleDocumentMouseMove, setElements, activeGroup, editingGroupId]);
+  }, [handleDocumentMouseMove, setElements, editingGroupId]);
 
   const handleElementMouseDown = useCallback((id: string, e: React.MouseEvent) => {
     const element = elementsOnCanvas.find(el => el.id === id);
@@ -822,334 +849,287 @@ export const useDesignState = () => {
             case 'align-bottom':
                 selectedElements.forEach(el => updates.set(el.id, { y: boundingBox.maxY - el.height }));
                 break;
-            case 'distribute-horizontal': {
+            case 'distribute-horizontal':
                 if (selectedElements.length < 3) break;
-                const sorted = [...selectedElements].sort((a, b) => a.x - b.x);
-                const totalWidth = sorted.reduce((sum, el) => sum + el.width, 0);
-                const totalSpace = (boundingBox.maxX - boundingBox.minX) - totalWidth;
-                const spacing = totalSpace / (sorted.length - 1);
+                const sortedH = [...selectedElements].sort((a, b) => a.x - b.x);
+                const totalWidth = sortedH.reduce((sum, el) => sum + el.width, 0);
+                const totalGap = boundingBox.maxX - boundingBox.minX - totalWidth;
+                const gap = totalGap / (sortedH.length - 1);
                 let currentX = boundingBox.minX;
-                sorted.forEach(el => {
+                sortedH.forEach(el => {
                     updates.set(el.id, { x: currentX });
-                    currentX += el.width + spacing;
+                    currentX += el.width + gap;
                 });
                 break;
-            }
-            case 'distribute-vertical': {
+            case 'distribute-vertical':
                 if (selectedElements.length < 3) break;
-                const sorted = [...selectedElements].sort((a, b) => a.y - b.y);
-                const totalHeight = sorted.reduce((sum, el) => sum + el.height, 0);
-                const totalSpace = (boundingBox.maxY - boundingBox.minY) - totalHeight;
-                const spacing = totalSpace / (sorted.length - 1);
+                const sortedV = [...selectedElements].sort((a, b) => a.y - b.y);
+                const totalHeight = sortedV.reduce((sum, el) => sum + el.height, 0);
+                const totalGapV = boundingBox.maxY - boundingBox.minY - totalHeight;
+                const gapV = totalGapV / (sortedV.length - 1);
                 let currentY = boundingBox.minY;
-                sorted.forEach(el => {
+                sortedV.forEach(el => {
                     updates.set(el.id, { y: currentY });
-                    currentY += el.height + spacing;
+                    currentY += el.height + gapV;
                 });
                 break;
-            }
         }
 
-        if (updates.size > 0) {
-            setElements(prevElements => {
-                const applyUpdatesRecursively = (els: CanvasElement[], groupContext: GroupElement | null): CanvasElement[] => {
-                    return els.map(el => {
-                        let newEl = { ...el };
-                        if (updates.has(el.id)) {
-                            const update = { ...updates.get(el.id)! };
-                            if (groupContext) {
-                                if (update.x !== undefined) update.x -= groupContext.x;
-                                if (update.y !== undefined) update.y -= groupContext.y;
-                            }
-                            newEl = { ...newEl, ...update };
-                        }
-
-                        if (newEl.type === 'group' && !updates.has(el.id)) {
-                           (newEl as GroupElement).elements = applyUpdatesRecursively((newEl as GroupElement).elements, newEl as GroupElement);
-                        }
-                        return newEl;
-                    });
-                };
-                return applyUpdatesRecursively(prevElements, activeGroup ?? null);
+        setElements(prev => {
+            let nextElements = prev;
+            updates.forEach((update, id) => {
+                const updater = makeElementUpdater(id, update, activeGroup);
+                nextElements = updater(nextElements);
             });
-        }
+            return nextElements;
+        });
+    }, [elementsOnCanvas, selectedElementIds, setElements, activeGroup]);
 
-    }, [selectedElementIds, elementsOnCanvas, setElements, activeGroup]);
+    const handleSelectElements = useCallback((ids: string[], mode: 'set' | 'add') => {
+        if (mode === 'set') {
+            setSelectedElementIds(ids);
+        } else {
+            setSelectedElementIds(prev => [...new Set([...prev, ...ids])]);
+        }
+    }, []);
+
+    const handleReorderForLayers = useCallback((draggedId: string, targetId: string, position: 'before' | 'after') => {
+        setElements(prev => {
+            const draggedItem = prev.find(p => p.id === draggedId);
+            if (!draggedItem) return prev;
+
+            const items = prev.filter(p => p.id !== draggedId);
+            const targetIndex = items.findIndex(p => p.id === targetId);
+            if (targetIndex === -1) return prev;
+
+            items.splice(targetIndex + (position === 'after' ? 1 : 0), 0, draggedItem);
+            return items;
+        });
+    }, [setElements]);
+
+    const handleToggleLock = useCallback((ids: string[]) => {
+        const idsToToggle = new Set(ids);
+        const toggleLockRecursively = (els: CanvasElement[]): CanvasElement[] => {
+            return els.map(el => {
+                const newEl = { ...el };
+                if (idsToToggle.has(el.id)) {
+                    newEl.locked = !newEl.locked;
+                }
+                if (newEl.type === 'group') {
+                    newEl.elements = toggleLockRecursively(newEl.elements);
+                }
+                return newEl;
+            });
+        };
+        setElements(toggleLockRecursively);
+    }, [setElements]);
 
   useEffect(() => {
+    const isAnySelectedLocked = selectedElementIds.some(id => {
+        const findElement = (els: CanvasElement[], targetId: string): CanvasElement | undefined => {
+            for (const el of els) {
+                if (el.id === targetId) return el;
+                if (el.type === 'group') {
+                    const found = findElement(el.elements, targetId);
+                    if (found) return found;
+                }
+            }
+        };
+        return findElement(elements, id)?.locked;
+    });
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      const activeEl = document.activeElement;
+      const isInputFocused = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+      if (isInputFocused) return;
 
-      if (e.key.startsWith('Arrow')) {
-          e.preventDefault();
-          if (selectedElementIds.length === 0) return;
-          const amount = e.shiftKey ? 10 : 1;
-          let dx = 0, dy = 0;
-          if (e.key === 'ArrowLeft') dx = -amount;
-          if (e.key === 'ArrowRight') dx = amount;
-          if (e.key === 'ArrowUp') dy = -amount;
-          if (e.key === 'ArrowDown') dy = amount;
-
-          setElements(prevElements => {
-              const selectedIdsSet = new Set(selectedElementIds);
-              const nudgeRecursively = (elementsToNudge: CanvasElement[]): CanvasElement[] => {
-                  return elementsToNudge.map(el => {
-                      if (selectedIdsSet.has(el.id) && !el.locked) {
-                          return { ...el, x: el.x + dx, y: el.y + dy };
-                      }
-                      if (el.type === 'group') {
-                          if (selectedIdsSet.has(el.id)) return el;
-                          return { ...el, elements: nudgeRecursively(el.elements) };
-                      }
-                      return el;
-                  });
-              };
-              return nudgeRecursively(prevElements);
-          });
-          return;
-      }
-      if (e.key === 'Escape' && editingGroupId) { e.preventDefault(); setEditingGroupId(null); setSelectedElementIds([editingGroupId]); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSaveDesign(); }
-      if ((e.key === 'Backspace' || e.key === 'Delete') && selectedElementIds.length > 0) { e.preventDefault(); handleDeleteElement(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') { e.preventDefault(); setSelectedElementIds(elementsToRender.filter(el => !el.locked).map(el => el.id)); }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g' && !e.shiftKey) { e.preventDefault(); handleGroup(); }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') { e.preventDefault(); handleUngroup(); }
-      // FIX: Refactored copy logic to fix type errors with discriminated unions.
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault();
-        if (selectedElementIds.length === 0 || editingGroupId) return;
-        const elementsToCopy = elements.filter(el => selectedElementIds.includes(el.id));
-        clipboardRef.current = elementsToCopy.map((el): Omit<CanvasElement, 'id'> => {
-          // By switching on `el.type`, TypeScript correctly narrows the type of `el`
-          // in each case, allowing the destructuring to produce a correctly typed `rest` object.
-          switch (el.type) {
-            case 'text': {
-              const { id, ...rest } = el;
-              return rest;
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+        e.preventDefault();
+        redo();
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleDeleteElement();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        handleGroup();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'G') {
+        e.preventDefault();
+        handleUngroup();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          handleSaveDesign();
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        if (selectedElementIds.length === 0) return;
+        const elementsToCopy = elementsOnCanvas
+          .filter(el => selectedElementIds.includes(el.id))
+          .map(el => {
+            // FIX: Correctly handle discriminated unions when removing the `id`.
+            // Using a switch ensures that `rest` has a proper, non-ambiguous type.
+            switch (el.type) {
+              case 'text':
+              case 'image':
+              case 'shape':
+              case 'group': {
+                const { id, ...rest } = el;
+                return rest;
+              }
             }
-            case 'image': {
-              const { id, ...rest } = el;
-              return rest;
+          });
+        clipboardRef.current = elementsToCopy;
+      }
+      
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        if (clipboardRef.current.length === 0) return;
+        
+        // FIX: Reconstruct elements from clipboard in a type-safe way.
+        // The previous implementation had a TypeScript error due to improper handling of discriminated unions
+        // and could result in an array with `undefined` values. This version correctly handles each
+        // element type and filters out any potential nulls, ensuring a valid `CanvasElement[]`.
+        const newElements = clipboardRef.current.map((el, i): CanvasElement | null => {
+            const newId = `el_${Date.now()}_${i}`;
+            const newPosition = { x: el.x + 20, y: el.y + 20 };
+            switch (el.type) {
+                case 'text':
+                    return { ...el, ...newPosition, id: newId };
+                case 'image':
+                    return { ...el, ...newPosition, id: newId };
+                case 'shape':
+                    return { ...el, ...newPosition, id: newId };
+                case 'group':
+                    return { ...el, ...newPosition, id: newId };
+                default:
+                    return null;
             }
-            case 'shape': {
-              const { id, ...rest } = el;
-              return rest;
-            }
+        }).filter((el): el is CanvasElement => el !== null);
+
+        setElements(prev => [...prev, ...newElements]);
+        setSelectedElementIds(newElements.map(el => el.id));
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        if (selectedElementIds.length === 0 || isAnySelectedLocked) return;
+        
+        const elementsMap = new Map<string, CanvasElement>();
+        const crawl = (els: CanvasElement[]) => els.forEach(el => {
+            elementsMap.set(el.id, el);
+            if (el.type === 'group') crawl(el.elements);
+        });
+        crawl(elements);
+
+        const elementsToDuplicate = selectedElementIds.map(id => elementsMap.get(id)).filter((el): el is CanvasElement => !!el);
+
+        // FIX: Refactored duplication to correctly handle discriminated unions.
+        // The original code used an unsafe cast `...(el as any)`.
+        // This `switch` statement correctly narrows the type of `el` before spreading,
+        // ensuring type safety and preventing compilation errors.
+        const newElements = elementsToDuplicate.map(el => {
+          const newPosition = { x: el.x + 20, y: el.y + 20 };
+          const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          
+          switch(el.type) {
+            case 'text':
+            case 'image':
+            case 'shape':
             case 'group': {
               const { id, ...rest } = el;
-              return rest;
-            }
-            default: {
-                const _exhaustiveCheck: never = el;
-                throw new Error(`Unhandled element type for copy: ${(_exhaustiveCheck as any).type}`);
+              return { ...rest, ...newPosition, id: newId };
             }
           }
         });
-      }
-      // FIX: Refactored paste logic to fix type errors with discriminated unions.
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        e.preventDefault();
-        if (clipboardRef.current.length === 0 || editingGroupId) return;
-        const pasteOffset = 20;
-        const newElements = clipboardRef.current.map((el): CanvasElement => {
-          const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          const newX = el.x + pasteOffset;
-          const newY = el.y + pasteOffset;
 
-          switch (el.type) {
-            case 'text':
-              return { ...(el as Omit<TextElement, 'id'>), id: newId, x: newX, y: newY };
-            case 'image':
-              return { ...(el as Omit<ImageElement, 'id'>), id: newId, x: newX, y: newY };
-            case 'shape':
-              return { ...(el as Omit<ShapeElement, 'id'>), id: newId, x: newX, y: newY };
-            case 'group':
-              return { ...(el as Omit<GroupElement, 'id'>), id: newId, x: newX, y: newY };
-            default:
-              // This case should be unreachable if all element types are handled.
-              throw new Error(`Unhandled element type in paste: ${(el as any).type}`);
-          }
-        });
-        setElements(prev => [...prev, ...newElements]);
-        setSelectedElementIds(newElements.map(el => el.id));
-        clipboardRef.current = newElements.map((el): Omit<CanvasElement, 'id'> => {
-            // FIX: Separated switch cases to ensure correct type narrowing for discriminated unions.
-            // This prevents TypeScript from creating a mish-mash object type for `rest`.
-            switch (el.type) {
-                case 'text': {
-                    const { id, ...rest } = el;
-                    return rest;
-                }
-                case 'image': {
-                    const { id, ...rest } = el;
-                    return rest;
-                }
-                case 'shape': {
-                    const { id, ...rest } = el;
-                    return rest;
-                }
-                case 'group': {
-                    const { id, ...rest } = el;
-                    return rest;
-                }
-                default:
-                    const _exhaustiveCheck: never = el;
-                    throw new Error(`Unhandled element type for clipboard: ${(_exhaustiveCheck as any).type}`);
-            }
-        });
-      }
-      // FIX: Refactored duplicate logic to fix type errors with discriminated unions.
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-        e.preventDefault();
-        if (selectedElementIds.length === 0 || editingGroupId) return;
-        const duplicateOffset = 20;
-        const elementsToDuplicate = elements.filter(el => selectedElementIds.includes(el.id));
-        if (elementsToDuplicate.some(el => el.locked)) return;
-        const newElements = elementsToDuplicate.map((el): CanvasElement => {
-          const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          const newX = el.x + duplicateOffset;
-          const newY = el.y + duplicateOffset;
-          
-          switch (el.type) {
-            case 'text':
-              return { ...el, id: newId, x: newX, y: newY };
-            case 'image':
-              return { ...el, id: newId, x: newX, y: newY };
-            case 'shape':
-              return { ...el, id: newId, x: newX, y: newY };
-            case 'group':
-              return { ...el, id: newId, x: newX, y: newY };
-            default:
-              const _exhaustiveCheck: never = el;
-              throw new Error(`Unhandled element type for duplication: ${(_exhaustiveCheck as any).type}`);
-          }
-        });
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
       }
-
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElementIds, handleDeleteElement, elements, handleGroup, handleUngroup, editingGroupId, elementsToRender, handleSaveDesign, setElements]);
+  }, [selectedElementIds, elements, undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, elementsOnCanvas]);
 
-  const handlePlaceContent = async (content: string) => {
-    setIsProcessing(true); setError(null);
-    try {
-      const contentMap = await placeContentWithAI(elements, content);
-      if (contentMap && Object.keys(contentMap).length > 0) {
-        setElements(prev => prev.map(el => (el.type === 'text' && contentMap[el.id]) ? { ...el, content: contentMap[el.id] } : el));
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : 'An unknown error occurred.'); } 
-    finally { setIsProcessing(false); }
-  };
-
-  const handleApplyStyles = async (command: string) => {
-    const selectedElements = elementsOnCanvas.filter(el => selectedElementIds.includes(el.id));
-    if (selectedElements.length === 0) return;
-    setIsProcessing(true); setError(null);
-    try {
-      if (selectedElements.length === 1) {
-        const element = selectedElements[0];
-        if (element.type === 'image') {
-          const newImageSrc = await editImageWithAI((element as ImageElement).src, command);
-          if (newImageSrc) handleUpdateElement(element.id, { src: newImageSrc });
-        } else {
-          const styleUpdates = await applyStylesWithAI(element, command);
-          if (styleUpdates && Object.keys(styleUpdates).length > 0) handleUpdateElement(element.id, styleUpdates);
-        }
-      } else {
-        if (selectedElements.some(el => el.type === 'image')) throw new Error("AI Designer does not support multi-selection with images yet.");
-        const updates = await applyBulkStylesWithAI(selectedElements, command);
-        if (!updates || updates.length === 0) return;
-        const updatesMap = new Map<string, Partial<CanvasElement>>();
-        updates.forEach(u => { const { id, ...styleUpdates } = u as Partial<CanvasElement> & { id: string }; if (id) updatesMap.set(id, styleUpdates); });
-        if (updatesMap.size === 0) return;
-        const updater = (prevElements: CanvasElement[]): CanvasElement[] => {
-          const applyUpdatesRecursively = (els: CanvasElement[]): CanvasElement[] => els.map(el => {
-            let updatedEl = { ...el };
-            if (updatesMap.has(el.id)) {
-                updatedEl = { ...updatedEl, ...updatesMap.get(el.id)! } as CanvasElement;
+    const withErrorHandling = <T extends any[]>(fn: (...args: T) => Promise<void>) => {
+        return async (...args: T) => {
+            try {
+                setError(null);
+                setIsProcessing(true);
+                await fn(...args);
+            } catch (err: any) {
+                console.error("AI operation failed:", err);
+                setError(err.message || "An unknown error occurred with the AI service.");
+            } finally {
+                setIsProcessing(false);
             }
-            if (updatedEl.type === 'group') {
-                (updatedEl as GroupElement).elements = applyUpdatesRecursively((updatedEl as GroupElement).elements);
-            }
-            return updatedEl;
-          });
-          return applyUpdatesRecursively(prevElements);
         };
-        setElements(updater);
-      }
-    } catch (err) { setError(err instanceof Error ? err.message : 'An unknown error occurred.'); } 
-    finally { setIsProcessing(false); }
-  };
-
-  // FIX: This function was corrupted by the prompt's error list. It has been restored.
-  const handleSaveTemplate = (name: string) => {
-    if (elements.length === 0) {
-      alert("Cannot save an empty canvas as a template.");
-      return;
-    }
-    const newTemplate = { name, elements: elements.map(({ id, ...rest }) => rest) };
-    const updatedTemplates = [...customTemplates, newTemplate];
-    setCustomTemplates(updatedTemplates);
-    localStorage.setItem('customTemplates', JSON.stringify(updatedTemplates));
-    alert(`Template "${name}" saved!`);
-  };
-
-  // FIX: This function was missing from the corrupted file. It has been added.
-  const handleSelectElements = (ids: string[], mode: 'set' | 'add') => {
-    if (mode === 'set') {
-      setSelectedElementIds(ids);
-    } else {
-      setSelectedElementIds(prev => [...new Set([...prev, ...ids])]);
-    }
-  };
-  
-  // FIX: This function was missing from the corrupted file. It has been added.
-  const handleReorderForLayers = (draggedId: string, targetId: string, position: 'before' | 'after') => {
-    setElements(prev => {
-      const draggedItemIndex = prev.findIndex(el => el.id === draggedId);
-      if (draggedItemIndex === -1) return prev;
-      const [draggedItem] = prev.splice(draggedItemIndex, 1);
-      
-      const targetIndex = prev.findIndex(el => el.id === targetId);
-      if (targetIndex === -1) {
-          prev.splice(draggedItemIndex, 0, draggedItem); // put it back
-          return prev;
-      }
-
-      // Layer panel is reversed, so 'before' means after in the array, and 'after' means before.
-      const insertAtIndex = position === 'before' ? targetIndex : targetIndex + 1;
-      prev.splice(insertAtIndex, 0, draggedItem);
-      
-      return [...prev];
-    });
-  };
-
-  // FIX: This function was missing from the corrupted file. It has been added.
-  const handleToggleLock = (ids: string[]) => {
-    const idsToToggle = new Set(ids);
-    const toggleRecursively = (els: CanvasElement[]): CanvasElement[] => {
-        return els.map(el => {
-            if (idsToToggle.has(el.id)) {
-                return { ...el, locked: !el.locked };
-            }
-            if (el.type === 'group') {
-                return { ...el, elements: toggleRecursively(el.elements) };
-            }
-            return el;
-        });
     };
-    setElements(toggleRecursively);
-  };
-  
-  // FIX: This function was missing from the corrupted file. It has been added.
-  const toggleDetailsPanel = () => setIsDetailsPanelCollapsed(p => !p);
-  // FIX: This function was missing from the corrupted file. It has been added.
-  const toggleRightPanel = () => setIsRightPanelCollapsed(p => !p);
 
-  // FIX: The main return statement for the hook was missing, causing all properties to be undefined. It has been added.
+    const handlePlaceContent = withErrorHandling(async (content: string) => {
+        const contentMap = await placeContentWithAI(elements, content);
+        setElements(prev =>
+            prev.map(el =>
+                el.type === 'text' && contentMap[el.id]
+                    ? { ...el, content: contentMap[el.id] } as TextElement
+                    : el
+            )
+        );
+    });
+
+    const handleApplyStyles = withErrorHandling(async (command: string) => {
+        if (selectedElementIds.length === 0) return;
+
+        if (selectedElementIds.length > 1) {
+            const selected = elements.filter(el => selectedElementIds.includes(el.id));
+            const updates = await applyBulkStylesWithAI(selected, command);
+            setElements(prev => {
+                const updatesMap = new Map(updates.map(u => [u.id, u]));
+                return prev.map(el => {
+                    const update = updatesMap.get(el.id);
+                    return update ? { ...el, ...update } as CanvasElement : el;
+                });
+            });
+        } else {
+            const element = singleSelectedElement;
+            if (!element) return;
+
+            if (element.type === 'image') {
+                const newSrc = await editImageWithAI(element.src, command);
+                handleUpdateElement(element.id, { src: newSrc });
+            } else {
+                const styleUpdates = await applyStylesWithAI(element, command);
+                handleUpdateElement(element.id, styleUpdates);
+            }
+        }
+    });
+    
+    const handleSaveTemplate = useCallback((name: string) => {
+      const template = {
+        name,
+        elements: elements.map(({ id, ...rest }) => rest)
+      };
+      setCustomTemplates(prev => {
+        const newTemplates = [...prev, template];
+        localStorage.setItem('customTemplates', JSON.stringify(newTemplates));
+        return newTemplates;
+      });
+      // Optionally, give user feedback (e.g., toast notification)
+      alert(`Template "${name}" saved!`);
+    }, [elements]);
+
+
+    const toggleDetailsPanel = () => setIsDetailsPanelCollapsed(prev => !prev);
+    const toggleRightPanel = () => setIsRightPanelCollapsed(prev => !prev);
+
+
   return {
     artboardSize,
     handleArtboardSelect,
@@ -1160,7 +1140,7 @@ export const useDesignState = () => {
     draggingElementId,
     guides,
     zoom,
-    editingGroup: activeGroup,
+    editingGroup,
     activeGroup,
     isDirty,
     canUndo,
@@ -1173,11 +1153,14 @@ export const useDesignState = () => {
     activeTool,
     customTemplates,
     canUngroup,
+
     isDetailsPanelCollapsed,
     isRightPanelCollapsed,
+    
     mainContainerRef,
     editorContainerRef,
     editorRef,
+
     handleSaveDesign,
     fitToScreen,
     handleZoomIn,
