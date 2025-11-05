@@ -257,7 +257,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   }, [selectedElementIds, elements]);
 
   return (
-    <div className="w-full text-white flex flex-col h-full">
+    <div className="w-full text-white flex flex-col">
         <div className="shrink-0 p-2 border-b border-gray-700 flex items-center space-x-4">
              <button
                 onClick={() => onToggleLock(selectedElementIds)}
@@ -282,7 +282,7 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                 <span className="text-sm w-10 text-right">{commonOpacity}%</span>
             </div>
         </div>
-        <div className="flex-1 overflow-y-auto space-y-1 p-2">
+        <div className="overflow-y-auto space-y-1 p-2 max-h-96">
             {visibleElements.map(element => (
                 <LayerItem
                     key={element.id}
@@ -295,15 +295,15 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
                 />
             ))}
         </div>
-        {editingGroupId && (
-            <button
-                onClick={() => onSetEditingGroupId(null)}
-                className="w-full mt-auto p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm shrink-0"
-            >
-                Exit Group
-            </button>
-        )}
         <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
+            {editingGroupId && (
+                <button
+                    onClick={() => onSetEditingGroupId(null)}
+                    className="w-full p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm"
+                >
+                    Exit Group
+                </button>
+            )}
              <div className="flex items-center justify-around">
                 <button
                     onClick={onGroup}
