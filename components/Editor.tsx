@@ -117,8 +117,9 @@ const Editor = forwardRef<HTMLDivElement, EditorProps>(({
                 y1={guide.y1}
                 x2={guide.x2}
                 y2={guide.y2}
-                stroke="#ef4444"
+                stroke={guide.type === 'grid' ? '#6b7280' : '#ef4444'}
                 strokeWidth="1"
+                strokeDasharray={guide.type === 'grid' ? '4 4' : undefined}
             />
         ))}
       </svg>

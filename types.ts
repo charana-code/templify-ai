@@ -1,3 +1,5 @@
+
+// FIX: Removed self-import of CanvasElement.
 export type ElementType = 'text' | 'image' | 'group' | 'shape';
 
 export interface BaseElement {
@@ -61,4 +63,5 @@ export interface Guide {
   y1: number;
   x2: number;
   y2: number;
+  type: 'snap' | 'grid';
 }

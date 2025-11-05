@@ -8,6 +8,9 @@ import LayerPanel from './components/LayerPanel';
 import AIPanel from './components/AIPanel';
 import DetailsPanel from './components/DetailsPanel';
 import PropertiesPanel from './components/PropertiesPanel';
+import MainMenu from './components/MainMenu';
+import SettingsModal from './components/SettingsModal';
+import GridGuidesToolbar from './components/GridGuidesToolbar';
 import { useDesignState } from './hooks/useDesignState';
 
 const App: React.FC = () => {
@@ -36,6 +39,12 @@ const App: React.FC = () => {
     canUngroup,
     isDetailsPanelCollapsed,
     isRightPanelCollapsed,
+    isSettingsModalOpen,
+    canCopy,
+    canPaste,
+    canDelete,
+    gridGuidesConfig,
+    gridLines,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -71,6 +80,12 @@ const App: React.FC = () => {
     handleAlignOrDistribute,
     toggleDetailsPanel,
     toggleRightPanel,
+    handleNewDesign,
+    handleCopy,
+    handlePaste,
+    handleDuplicate,
+    toggleSettingsModal,
+    handleGridGuidesConfigChange,
   } = useDesignState();
 
 
@@ -92,19 +107,36 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-800">
       <header className="bg-gray-900 text-white p-2 flex items-center justify-between shadow-md z-10 h-16">
-        <div className="w-1/3"></div>
+        <div className="w-1/3 flex items-center pl-4 space-x-4">
+          <h1 className="text-xl font-bold">Gemini Design Studio</h1>
+          <MainMenu
+            onNew={handleNewDesign}
+            onSave={handleSaveDesign}
+            isDirty={isDirty}
+            onCopy={handleCopy}
+            onPaste={handlePaste}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDeleteElement}
+            onSettings={toggleSettingsModal}
+            canCopy={canCopy}
+            canPaste={canPaste}
+            canDelete={canDelete}
+          />
+        </div>
         <div className="w-1/3 text-center">
-          {selectedElementIds.length > 0 ? (
-            // FIX: Removed `elements` and `onUpdateElements` props as they are not defined in `ContextualToolbarProps`.
+          {selectedElementIds.length > 0 && (
             <ContextualToolbar
               selectedElementIds={selectedElementIds}
               onAlignOrDistribute={handleAlignOrDistribute}
             />
-          ) : (
-            <h1 className="text-xl font-bold">Gemini Design Studio</h1>
           )}
         </div>
         <div className="w-1/3 flex justify-end items-center pr-4 space-x-2">
+          <GridGuidesToolbar
+            config={gridGuidesConfig}
+            onChange={handleGridGuidesConfigChange}
+          />
+          <div className="h-6 w-px bg-gray-600"></div>
           <button
             onClick={handleSaveDesign}
             disabled={!isDirty}
@@ -217,7 +249,7 @@ const App: React.FC = () => {
                   elements={elementsToRender}
                   selectedElementIds={selectedElementIds}
                   draggingElementId={draggingElementId}
-                  guides={guides}
+                  guides={[...guides, ...gridLines]}
                   zoom={zoom}
                   editingGroup={activeGroup ?? null}
                   onAddElement={handleAddElement}
@@ -298,6 +330,7 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
+      {isSettingsModalOpen && <SettingsModal onClose={toggleSettingsModal} />}
     </div>
   );
 };
