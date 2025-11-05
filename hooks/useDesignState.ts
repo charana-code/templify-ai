@@ -235,6 +235,16 @@ export const useDesignState = () => {
 
   const elementsToRender = liveElements ?? elements;
   const singleSelectedElement = selectedElementIds.length === 1 ? elementsOnCanvas.find(el => el.id === selectedElementIds[0]) : null;
+  
+  const handleSetZoom = useCallback((newZoom: number | ((prevZoom: number) => number)) => {
+    const MIN_ZOOM = 0.1; // 10%
+    const MAX_ZOOM = 5.0; // 500%
+    setZoom(prevZoom => {
+        const nextZoom = typeof newZoom === 'function' ? newZoom(prevZoom) : newZoom;
+        return Math.max(MIN_ZOOM, Math.min(nextZoom, MAX_ZOOM));
+    });
+  }, []);
+
 
   const fitToScreen = useCallback(() => {
     if (!mainContainerRef.current || !artboardSize) return;
@@ -251,14 +261,8 @@ export const useDesignState = () => {
     const scaleY = availableHeight / artboardHeight;
     
     const newZoom = Math.min(scaleX, scaleY);
-    setZoom(newZoom > 0 ? newZoom : 1);
-  }, [artboardSize]);
-
-  const handleSetZoom = useCallback((newZoom: number) => {
-      if (newZoom > 0) {
-          setZoom(newZoom);
-      }
-  }, []);
+    handleSetZoom(newZoom > 0 ? newZoom : 1);
+  }, [artboardSize, handleSetZoom]);
 
   useEffect(() => {
     if (!artboardSize) return;
@@ -1053,6 +1057,25 @@ export const useDesignState = () => {
           setSelectedElementIds(allSelectableIds);
           return;
         }
+        
+        // Add zoom controls
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === '=' || e.key === '+') { // Handle both '=' and '+' for zoom in
+                e.preventDefault();
+                handleSetZoom(z => z + 0.1);
+                return;
+            }
+            if (e.key === '-') {
+                e.preventDefault();
+                handleSetZoom(z => z - 0.1);
+                return;
+            }
+            if (e.key === '0') {
+                e.preventDefault();
+                fitToScreen();
+                return;
+            }
+        }
 
         if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
         if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); }
@@ -1068,7 +1091,7 @@ export const useDesignState = () => {
       return () => document.removeEventListener('keydown', handleKeyDown);
     }, [
         undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, 
-        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId
+        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId, fitToScreen, handleSetZoom
     ]);
 
     const withErrorHandling = <T extends any[]>(fn: (...args: T) => Promise<void>) => {

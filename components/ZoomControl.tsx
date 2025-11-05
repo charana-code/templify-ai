@@ -43,8 +43,12 @@ const ZoomControl: React.FC<ZoomControlProps> = ({ zoom, onZoomChange, onFitToSc
   };
 
   const handleCustomZoomBlur = () => {
-    if (customZoom > 0) {
-      onZoomChange(customZoom / 100);
+    const clampedZoom = Math.max(10, Math.min(500, customZoom));
+    if (clampedZoom > 0) {
+      onZoomChange(clampedZoom / 100);
+      if (clampedZoom !== customZoom) {
+          setCustomZoom(clampedZoom);
+      }
     } else {
         setCustomZoom(Math.round(zoom * 100)); // reset if invalid
     }
@@ -52,12 +56,20 @@ const ZoomControl: React.FC<ZoomControlProps> = ({ zoom, onZoomChange, onFitToSc
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-        if (customZoom > 0) {
-            onZoomChange(customZoom / 100);
+        const clampedZoom = Math.max(10, Math.min(500, customZoom));
+        if (clampedZoom > 0) {
+            onZoomChange(clampedZoom / 100);
             setIsOpen(false);
         }
         (e.target as HTMLInputElement).blur();
     }
+  };
+  
+  const handleZoomStep = (step: number) => {
+    const newZoomPercent = customZoom + step;
+    const clampedZoom = Math.max(10, Math.min(500, newZoomPercent));
+    setCustomZoom(clampedZoom);
+    onZoomChange(clampedZoom / 100);
   };
 
   const presets = [0.5, 0.7, 1, 1.5, 2];
@@ -85,16 +97,36 @@ const ZoomControl: React.FC<ZoomControlProps> = ({ zoom, onZoomChange, onFitToSc
               </button>
             ))}
             <div className="border-t border-gray-700 my-1"></div>
-            <div className="relative flex items-center">
-               <input
+            <div className="flex items-center">
+              <div className="flex items-center bg-gray-900 border border-gray-600 rounded-md w-full">
+                <button
+                  onClick={() => handleZoomStep(-10)}
+                  className="px-2.5 py-1 text-lg font-mono leading-none rounded-l-md hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  aria-label="Zoom out by 10%"
+                  disabled={customZoom <= 10}
+                >
+                  -
+                </button>
+                <div className="relative flex-grow">
+                  <input
                     type="number"
                     value={customZoom}
                     onChange={handleCustomZoomChange}
                     onBlur={handleCustomZoomBlur}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-gray-900 border border-gray-600 rounded-md p-1.5 pl-3 pr-8 text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <span className="absolute right-3 text-gray-500 text-sm pointer-events-none">%</span>
+                    className="w-full bg-transparent p-1.5 text-sm text-center pr-6 focus:outline-none ring-0 border-x border-gray-600"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">%</span>
+                </div>
+                <button
+                  onClick={() => handleZoomStep(10)}
+                  className="px-2.5 py-1 text-lg font-mono leading-none rounded-r-md hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  aria-label="Zoom in by 10%"
+                  disabled={customZoom >= 500}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
         </div>
