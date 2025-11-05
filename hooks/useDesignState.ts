@@ -80,8 +80,6 @@ const makeElementUpdater = (id: string, updates: Partial<CanvasElement>, groupCo
     };
 };
 
-const ZOOM_LEVELS = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
-
 export const useDesignState = () => {
   const [isDirty, setIsDirty] = useState(false);
   const { 
@@ -255,36 +253,12 @@ export const useDesignState = () => {
     const newZoom = Math.min(scaleX, scaleY);
     setZoom(newZoom > 0 ? newZoom : 1);
   }, [artboardSize]);
-  
-  const handleZoomIn = useCallback(() => {
-    setZoom(currentZoom => {
-        const nextLevel = ZOOM_LEVELS.find(level => level > currentZoom);
-        return nextLevel || currentZoom;
-    });
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-      setZoom(currentZoom => {
-          const prevLevel = [...ZOOM_LEVELS].reverse().find(level => level < currentZoom);
-          return prevLevel || currentZoom;
-      });
-  }, []);
 
   const handleSetZoom = useCallback((newZoom: number) => {
       if (newZoom > 0) {
           setZoom(newZoom);
       }
   }, []);
-
-  const canZoomIn = useMemo(() => {
-      const nextLevel = ZOOM_LEVELS.find(level => level > zoom);
-      return !!nextLevel;
-  }, [zoom]);
-
-  const canZoomOut = useMemo(() => {
-      const prevLevel = [...ZOOM_LEVELS].reverse().find(level => level < zoom);
-      return !!prevLevel;
-  }, [zoom]);
 
   useEffect(() => {
     if (!artboardSize) return;
@@ -1177,8 +1151,6 @@ export const useDesignState = () => {
     isDirty,
     canUndo,
     canRedo,
-    canZoomIn,
-    canZoomOut,
     error,
     selectionRect,
     isProcessing,
@@ -1198,8 +1170,6 @@ export const useDesignState = () => {
     editorRef,
     handleSaveDesign,
     fitToScreen,
-    handleZoomIn,
-    handleZoomOut,
     handleSetZoom,
     undo,
     redo,
@@ -1229,6 +1199,7 @@ export const useDesignState = () => {
     handleAlignOrDistribute,
     toggleDetailsPanel,
     toggleRightPanel,
+
     handleNewDesign,
     handleCopy,
     handlePaste,

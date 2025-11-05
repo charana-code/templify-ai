@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import Toolbar from './components/Toolbar';
 import Editor from './components/Editor';
 import Accordion from './components/Accordion';
@@ -11,6 +11,7 @@ import PropertiesPanel from './components/PropertiesPanel';
 import MainMenu from './components/MainMenu';
 import SettingsModal from './components/SettingsModal';
 import GridGuidesToolbar from './components/GridGuidesToolbar';
+import ZoomControl from './components/ZoomControl';
 import { useDesignState } from './hooks/useDesignState';
 
 const App: React.FC = () => {
@@ -29,8 +30,6 @@ const App: React.FC = () => {
     isDirty,
     canUndo,
     canRedo,
-    canZoomIn,
-    canZoomOut,
     error,
     selectionRect,
     isProcessing,
@@ -50,8 +49,6 @@ const App: React.FC = () => {
     editorRef,
     handleSaveDesign,
     fitToScreen,
-    handleZoomIn,
-    handleZoomOut,
     handleSetZoom,
     undo,
     redo,
@@ -87,17 +84,6 @@ const App: React.FC = () => {
     toggleSettingsModal,
     handleGridGuidesConfigChange,
   } = useDesignState();
-
-
-  const zoomOptions = useMemo(() => {
-    const defaultLevels = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
-    if (!defaultLevels.includes(zoom)) {
-        const newLevels = [...defaultLevels, zoom];
-        newLevels.sort((a, b) => a - b);
-        return newLevels;
-    }
-    return defaultLevels;
-  }, [zoom]);
 
 
   if (!artboardSize) {
@@ -147,47 +133,11 @@ const App: React.FC = () => {
             {isDirty ? '💾 Save' : '✅ Saved'}
           </button>
           
-          <div className="flex items-center bg-gray-700 rounded-md text-sm font-semibold">
-            <button
-                onClick={handleZoomOut}
-                disabled={!canZoomOut}
-                className="px-3 py-1.5 hover:bg-gray-600 rounded-l-md disabled:text-gray-500 disabled:cursor-not-allowed"
-                title="Zoom Out"
-                aria-label="Zoom Out"
-            >
-                -
-            </button>
-            <select
-                value={zoom}
-                onChange={(e) => handleSetZoom(parseFloat(e.target.value))}
-                className="bg-gray-700 appearance-none text-center focus:outline-none w-20 py-1.5 cursor-pointer hover:bg-gray-600"
-                aria-label="Set zoom level"
-            >
-                {zoomOptions.map(level => (
-                    <option key={level} value={level}>
-                        {Math.round(level * 100)}%
-                    </option>
-                ))}
-            </select>
-            <button
-                onClick={handleZoomIn}
-                disabled={!canZoomIn}
-                className="px-3 py-1.5 hover:bg-gray-600 rounded-r-md disabled:text-gray-500 disabled:cursor-not-allowed"
-                title="Zoom In"
-                aria-label="Zoom In"
-            >
-                +
-            </button>
-          </div>
-          
-          <button
-            onClick={fitToScreen}
-            className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md text-sm font-semibold transition-colors"
-            aria-label="Fit to Screen"
-            title="Fit to Screen"
-          >
-            ⛶
-          </button>
+          <ZoomControl 
+              zoom={zoom}
+              onZoomChange={handleSetZoom}
+              onFitToScreen={fitToScreen}
+          />
 
           <div className="h-6 w-px bg-gray-600"></div>
           <button
