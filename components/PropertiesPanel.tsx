@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { CanvasElement, TextElement, ImageElement, ShapeElement, ElementType } from '../types';
 import Accordion from './Accordion';
+import FontSelector from './FontSelector';
 
 const NumberInput: React.FC<{
   label: string;
@@ -119,15 +120,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
 
   const renderTextProperties = (element: Partial<TextElement>) => (
     <>
+        <FontSelector
+          value={element.fontFamily}
+          onChange={v => handleUpdate({ fontFamily: v })}
+        />
         <NumberInput label="Font Size" value={element.fontSize} onChange={v => handleUpdate({ fontSize: v })} suffix="px" />
         <ColorInput label="Color" value={element.color} onChange={v => handleUpdate({ color: v })} />
-        <SelectInput label="Font Family" value={element.fontFamily} onChange={v => handleUpdate({ fontFamily: v })} options={[
-             { value: 'Arial', label: 'Arial' },
-             { value: 'Verdana', label: 'Verdana' },
-             { value: 'Georgia', label: 'Georgia' },
-             { value: 'Times New Roman', label: 'Times New Roman' },
-             { value: 'Courier New', label: 'Courier New' },
-        ]} />
         <div className="flex space-x-2">
             <button title="Bold" onClick={() => handleUpdate({ fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold' })} className={`w-full p-1 rounded font-bold ${element.fontWeight === 'bold' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>B</button>
             <button title="Italic" onClick={() => handleUpdate({ fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic' })} className={`w-full p-1 rounded italic ${element.fontStyle === 'italic' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}>I</button>
