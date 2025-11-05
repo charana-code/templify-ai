@@ -48,7 +48,6 @@ const DraggableTemplateItem: React.FC<{ name: string; elements: any[] }> = ({ na
     );
 };
 
-// FIX: Simplified the 'element' prop type to use Omit<CanvasElement, ...> for better readability and consistency.
 const DraggableElement: React.FC<{
   element: Omit<CanvasElement, 'id' | 'x' | 'y' | 'rotation'>;
   children: React.ReactNode;
@@ -398,10 +397,10 @@ const ImageToolPanel: React.FC<{ onAddElement: (element: Omit<CanvasElement, 'id
     );
 };
 
-// FIX: Widened the 'element' type to Omit<CanvasElement, ...> to support a discriminated union. This resolves type errors when creating shape/image definitions with specific properties (like shapeType or frameShape) and when passing these elements to DraggableElement.
-type ElementDef = {
+// FIX: Made ElementDef generic to allow for specific element types (like ShapeElement with `shapeType`), which resolves excess property checking errors from TypeScript for discriminated unions.
+type ElementDef<T extends CanvasElement = CanvasElement> = {
     name: string;
-    element: Omit<CanvasElement, 'id' | 'x' | 'y' | 'rotation'>;
+    element: Omit<T, 'id' | 'x' | 'y' | 'rotation'>;
     preview: React.ReactNode;
 };
 
@@ -449,13 +448,12 @@ const AllElementsView: React.FC<{
 
 
 const ElementsToolPanel: React.FC<{
-  onSetSubView: (view: 'shapes' | 'icons' | 'frames') => void;
+  onSetSubView: (view: 'shapes' | 'icons' | 'frames' | 'graphics' | 'social') => void;
 }> = ({ onSetSubView }) => {
-    const placeholderImageSrc = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI0U1RTdFQiIvPjxwYXRoIGQ9Ik04MCA3MCBMNjAgNDAgTDQ1IDYwIEwzMCA1MCBMMjAgNzAgSCA4MCBaIiBmaWxsPSIjRERERUZFIi8+PGNpcmNsZSBjeD0iMzUiIGN5PSIzNSIgcj0iOCIgZmlsbD0iI0Y5RkFGQiIvPjwvc3ZnPg==";
-    
-    // Use the first few items from the main definitions for the preview
     const shapePreviews = shapeDefinitions.slice(0, 5);
     const iconPreviews = iconDefinitions.slice(0, 5);
+    const graphicsPreviews = graphicsDefinitions.slice(0, 5);
+    const socialPreviews = socialMediaDefinitions.slice(0, 5);
     const framePreviews = frameDefinitions.slice(0, 4);
     
     const Section: React.FC<{ title: string; onSeeAll: () => void; children: React.ReactNode }> = ({ title, onSeeAll, children }) => (
@@ -479,6 +477,16 @@ const ElementsToolPanel: React.FC<{
         </Section>
         <Section title="Icons" onSeeAll={() => onSetSubView('icons')}>
             {iconPreviews.map(def => (
+               <DraggableElement key={def.name} element={def.element}>{def.preview}</DraggableElement>
+           ))}
+        </Section>
+        <Section title="Graphics" onSeeAll={() => onSetSubView('graphics')}>
+            {graphicsPreviews.map(def => (
+               <DraggableElement key={def.name} element={def.element}>{def.preview}</DraggableElement>
+           ))}
+        </Section>
+         <Section title="Social Media & Logos" onSeeAll={() => onSetSubView('social')}>
+            {socialPreviews.map(def => (
                <DraggableElement key={def.name} element={def.element}>{def.preview}</DraggableElement>
            ))}
         </Section>
@@ -682,7 +690,7 @@ interface DetailsPanelProps {
 }
 
 const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, customTemplates, editorRef, artboardSize, onSaveTemplate }) => {
-  const [subView, setSubView] = useState<'main' | 'shapes' | 'icons' | 'frames'>('main');
+  const [subView, setSubView] = useState<'main' | 'shapes' | 'icons' | 'frames' | 'graphics' | 'social'>('main');
 
   const renderContent = () => {
     switch (activeTool) {
@@ -699,6 +707,12 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
         }
         if (subView === 'frames') {
             return <AllElementsView title="Frames" items={frameDefinitions} onBack={() => setSubView('main')} />;
+        }
+        if (subView === 'graphics') {
+            return <AllElementsView title="Graphics" items={graphicsDefinitions} onBack={() => setSubView('main')} />;
+        }
+        if (subView === 'social') {
+            return <AllElementsView title="Social Media & Logos" items={socialMediaDefinitions} onBack={() => setSubView('main')} />;
         }
         return <ElementsToolPanel onSetSubView={setSubView} />;
       case 'templates':
@@ -724,7 +738,8 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
 // --- DATA DEFINITIONS FOR ELEMENTS PANEL ---
 
 const defaultShapeProps = { fill: '#3b82f6', stroke: '#ffffff', strokeWidth: 0, strokeDash: 'solid' as const };
-const shapeDefinitions: ElementDef[] = [
+// FIX: Use ElementDef<ShapeElement> to correctly type the array of shape definitions, allowing shape-specific properties.
+const shapeDefinitions: ElementDef<ShapeElement>[] = [
     { name: 'Rectangle', element: { type: 'shape', shapeType: 'rectangle', width: 150, height: 100, ...defaultShapeProps }, preview: <><svg width="40" height="40" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" fill="#3b82f6" /></svg><span className="text-xs mt-1">Rectangle</span></> },
     { name: 'Ellipse', element: { type: 'shape', shapeType: 'ellipse', width: 150, height: 100, ...defaultShapeProps }, preview: <><svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="7" fill="#3b82f6" /></svg><span className="text-xs mt-1">Ellipse</span></> },
     { name: 'Triangle', element: { type: 'shape', shapeType: 'triangle', width: 120, height: 100, ...defaultShapeProps }, preview: <><svg width="40" height="40" viewBox="0 0 24 24"><path d="M12 2 L2 22 L22 22 Z" fill="#3b82f6" /></svg><span className="text-xs mt-1">Triangle</span></> },
@@ -755,7 +770,7 @@ const rawIconDefinitions = [
     { name: 'Plus', svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>' },
 ];
 
-const iconDefinitions: ElementDef[] = rawIconDefinitions.map(icon => {
+const iconDefinitions: ElementDef<ShapeElement>[] = rawIconDefinitions.map(icon => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(icon.svg, "image/svg+xml");
     const svgNode = doc.querySelector('svg');
@@ -791,13 +806,55 @@ const iconDefinitions: ElementDef[] = rawIconDefinitions.map(icon => {
 
 const placeholderImageSrc = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI0U1RTdFQiIvPjxwYXRoIGQ9Ik04MCA3MCBMNjAgNDAgTDQ1IDYwIEwzMCA1MCBMMjAgNzAgSCA4MCBaIiBmaWxsPSIjRERERUZFIi8+PGNpcmNsZSBjeD0iMzUiIGN5PSIzNSIgcj0iOCIgZmlsbD0iI0Y5RkFGQiIvPjwvc3ZnPg==";
 const defaultFrameProps = { src: placeholderImageSrc, width: 150, height: 150, flipHorizontal: false, flipVertical: false };
-const frameDefinitions: ElementDef[] = [
+// FIX: Use ElementDef<ImageElement> to correctly type the array of frame definitions, allowing image-specific properties.
+const frameDefinitions: ElementDef<ImageElement>[] = [
     { name: 'Circle', element: { type: 'image', ...defaultFrameProps, frameShape: 'circle' }, preview: <><div className="w-10 h-10 rounded-full bg-gray-500" /><span className="text-xs mt-1">Circle</span></> },
     { name: 'Arch', element: { type: 'image', ...defaultFrameProps, frameShape: 'arch' }, preview: <><div className="w-10 h-10 bg-gray-500" style={{ clipPath: 'path("M 0 100 V 50 C 0 22.38 22.38 0 50 0 C 77.62 0 100 22.38 100 50 V 100 Z")' }}/><span className="text-xs mt-1">Arch</span></> },
     { name: 'Hexagon', element: { type: 'image', ...defaultFrameProps, frameShape: 'polygon-6' }, preview: <><div className="w-10 h-10 bg-gray-500" style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}/><span className="text-xs mt-1">Hexagon</span></> },
     { name: 'Star Frame', element: { type: 'image', ...defaultFrameProps, frameShape: 'star-5' }, preview: <><div className="w-10 h-10 bg-gray-500" style={{ clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }}/><span className="text-xs mt-1">Star</span></> },
     { name: 'Square', element: { type: 'image', ...defaultFrameProps }, preview: <><div className="w-10 h-10 bg-gray-500" /><span className="text-xs mt-1">Square</span></> },
     { name: 'Rounded', element: { type: 'image', ...defaultFrameProps, borderRadius: 20 }, preview: <><div className="w-10 h-10 bg-gray-500 rounded-lg" /><span className="text-xs mt-1">Rounded</span></> },
+];
+
+// FIX: Specify the return type as ElementDef<ImageElement> to ensure type safety for image-specific properties like `src`.
+const createImageElementDef = (name: string, svg: string): ElementDef<ImageElement> => {
+    const base64Svg = btoa(svg);
+    const dataUri = `data:image/svg+xml;base64,${base64Svg}`;
+    return {
+        name,
+        element: {
+            type: 'image',
+            src: dataUri,
+            width: 100,
+            height: 100,
+            flipHorizontal: false,
+            flipVertical: false,
+        },
+        preview: <>
+            <img src={dataUri} alt={`${name} graphic`} className="w-10 h-10 object-contain" />
+            <span className="text-xs mt-1">{name}</span>
+        </>
+    };
+};
+
+// FIX: Use ElementDef<ImageElement> to correctly type the array of graphic definitions.
+const graphicsDefinitions: ElementDef<ImageElement>[] = [
+    createImageElementDef('Flower', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="15" fill="#FFD700"/><circle cx="50" cy="25" r="12" fill="#FF69B4"/><circle cx="75" cy="40" r="12" fill="#FF69B4"/><circle cx="70" cy="70" r="12" fill="#FF69B4"/><circle cx="30" cy="70" r="12" fill="#FF69B4"/><circle cx="25" cy="40" r="12" fill="#FF69B4"/></svg>'),
+    createImageElementDef('House', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,10 90,40 90,90 10,90 10,40" fill="#A52A2A"/><rect x="20" y="40" width="60" height="50" fill="#F5DEB3"/><rect x="40" y="60" width="20" height="30" fill="#8B4513"/></svg>'),
+    createImageElementDef('Tree', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="45" y="70" width="10" height="30" fill="#8B4513"/><circle cx="50" cy="50" r="30" fill="#228B22"/><circle cx="35" cy="55" r="20" fill="#32CD32"/><circle cx="65" cy="55" r="20" fill="#32CD32"/></svg>'),
+    createImageElementDef('Sun', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="30" fill="#FFD700"/><line x1="50" y1="10" x2="50" y2="25" stroke="#FFD700" stroke-width="5"/><line x1="50" y1="75" x2="50" y2="90" stroke="#FFD700" stroke-width="5"/><line x1="10" y1="50" x2="25" y2="50" stroke="#FFD700" stroke-width="5"/><line x1="75" y1="50" x2="90" y2="50" stroke="#FFD700" stroke-width="5"/><line x1="21" y1="21" x2="32" y2="32" stroke="#FFD700" stroke-width="5"/><line x1="68" y1="68" x2="79" y2="79" stroke="#FFD700" stroke-width="5"/><line x1="21" y1="79" x2="32" y2="68" stroke="#FFD700" stroke-width="5"/><line x1="68" y1="32" x2="79" y2="21" stroke="#FFD700" stroke-width="5"/></svg>'),
+    createImageElementDef('Cat', '<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 20,80 C 20,60 30,50 50,50 C 70,50 80,60 80,80 L 80,90 L 20,90 Z" fill="#888"/><circle cx="50" cy="40" r="25" fill="#AAA"/><path d="M 40,20 L 30,10 L 40,30 Z" fill="#333"/><path d="M 60,20 L 70,10 L 60,30 Z" fill="#333"/><circle cx="40" cy="40" r="3" fill="#000"/><circle cx="60" cy="40" r="3" fill="#000"/><path d="M 45,50 Q 50,55 55,50" stroke="#000" fill="none" stroke-width="2"/></svg>'),
+];
+
+// FIX: Use ElementDef<ImageElement> to correctly type the array of social media definitions.
+const socialMediaDefinitions: ElementDef<ImageElement>[] = [
+    createImageElementDef('Facebook', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#1877F2" d="M504 256C504 119 393 8 256 8S8 119 8 256c0 123.78 90.69 226.38 209.25 245V327.69h-63V256h63v-54.64c0-62.15 37-96.48 93.67-96.48 27.14 0 55.52 4.84 55.52 4.84v61h-31.28c-30.8 0-40.41 19.12-40.41 38.73V256h68.78l-11 71.69h-57.78V501C413.31 482.38 504 379.78 504 256z"/></svg>'),
+    createImageElementDef('Instagram', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><defs><radialGradient id="ig-grad" cx="0.3" cy="1" r="1"><stop offset="0" stop-color="#FDCB52"/><stop offset="0.5" stop-color="#FD1D1D"/><stop offset="1" stop-color="#833AB4"/></radialGradient></defs><path fill="url(#ig-grad)" d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9 26.3 26.2 58 34.4 93.9 36.2 37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>'),
+    createImageElementDef('X Logo', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="black" d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8L200.7 275.5 26.8 48H172.4L272.9 180.9 389.2 48zM364.4 421.8h39.1L151.1 88h-42L364.4 421.8z"/></svg>'),
+    createImageElementDef('LinkedIn', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path fill="#0077B5" d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>'),
+    createImageElementDef('YouTube', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path fill="#FF0000" d="M549.655 124.083c-6.281-23.65-24.787-42.104-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.493-41.984 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.984 48.284 48.597C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.613 41.984-24.947 48.284-48.597C561.067 345.824 561.067 256.386 561.067 256.386s0-89.438-11.412-132.305zM232.615 358.717V153.28l153.28 102.723-153.28 102.714z"/></svg>'),
+    createImageElementDef('Google', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 21.2 172.9 60.2l-63.4 60.2c-27.5-26.2-62.2-42.4-109.5-42.4-86.4 0-156.4 70-156.4 156.4s70 156.4 156.4 156.4c97.2 0 132.2-64.8 136.2-97.2H248v-83.8h236.2c2.4 12.6 3.8 26.2 3.8 40.8z"/></svg>'),
+    createImageElementDef('Apple', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="#000000" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C39.2 141.6 0 184.8 0 241.2c0 61.6 31.5 118.8 80.6 162.7 22.9 20.5 50.4 42.2 83.9 42.2 33.2 0 61.9-20.8 88.5-20.8 27.1 0 51.5 19.4 83.1 19.4 24.9 0 50.1-16.7 60.1-41.4-23.2-16.4-39.3-43.2-39.3-75.8zM245.2 105.7c15.2-15.6 28.2-36.2 34.2-53.8-19.4-5.3-38.1-3.4-56.1 4.5-17.2 7.6-32.9 21.8-43.1 35.7-11.2 15-21.2 33.6-25.9 52.8 19.7 4.9 39.8 3.3 57.6-4.5 17.5-7.7 33.2-21.9 43.3-35.2z"/></svg>'),
 ];
 
 
