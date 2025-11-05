@@ -93,7 +93,7 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-800">
-      <header className="bg-gray-900 text-white p-2 flex items-center justify-between shadow-md z-10 h-16">
+      <header className="bg-gray-900 text-white p-2 flex items-center justify-between shadow-md z-30 h-16">
         <div className="w-1/3 flex items-center pl-4 space-x-4">
           <h1 className="text-xl font-bold">Gemini Design Studio</h1>
           <MainMenu
