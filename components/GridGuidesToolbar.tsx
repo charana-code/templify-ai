@@ -5,6 +5,7 @@ interface GridGuidesToolbarProps {
     cols: number;
     rows: number;
     isVisible: boolean;
+    gutterSize: number;
   };
   onChange: (newConfig: Partial<GridGuidesToolbarProps['config']>) => void;
 }
@@ -13,23 +14,31 @@ const GridInput: React.FC<{
   label: string;
   value: number;
   onChange: (value: number) => void;
-}> = ({ label, value, onChange }) => (
+  min?: number;
+  max?: number;
+  suffix?: string;
+}> = ({ label, value, onChange, min = 1, max = 100, suffix }) => (
   <div className="flex items-center space-x-1.5">
     <label htmlFor={`grid-${label.toLowerCase()}`} className="text-xs text-gray-400 font-semibold">{label}</label>
-    <input
-      id={`grid-${label.toLowerCase()}`}
-      type="number"
-      min="1"
-      max="100"
-      value={value}
-      onChange={(e) => {
-        const val = parseInt(e.target.value, 10);
-        if (val > 0) {
-          onChange(val);
-        }
-      }}
-      className="w-12 bg-gray-800 text-white rounded-md p-1 text-center text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-    />
+    <div className="relative">
+      <input
+        id={`grid-${label.toLowerCase()}`}
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => {
+          const val = parseInt(e.target.value, 10);
+          if (!isNaN(val) && val >= min) {
+            onChange(val);
+          } else if (e.target.value === '') {
+            onChange(min);
+          }
+        }}
+        className={`bg-gray-800 text-white rounded-md p-1 text-center text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 ${suffix ? 'w-16 pr-5' : 'w-12'}`}
+      />
+      {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">{suffix}</span>}
+    </div>
   </div>
 );
 
@@ -43,6 +52,7 @@ const GridGuidesToolbar: React.FC<GridGuidesToolbarProps> = ({ config, onChange 
     <div className="flex items-center space-x-3 bg-gray-700 p-1.5 rounded-md text-sm">
       <GridInput label="Cols" value={config.cols} onChange={(cols) => onChange({ cols })} />
       <GridInput label="Rows" value={config.rows} onChange={(rows) => onChange({ rows })} />
+      <GridInput label="Gutter" value={config.gutterSize} onChange={(gutterSize) => onChange({ gutterSize })} min={0} max={1000} suffix="px" />
       <button
         onClick={handleVisibilityToggle}
         className={`p-1.5 rounded-md transition-colors ${

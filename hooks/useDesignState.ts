@@ -118,7 +118,7 @@ export const useDesignState = () => {
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [canPaste, setCanPaste] = useState(false);
-  const [gridGuidesConfig, setGridGuidesConfig] = useState({ cols: 3, rows: 3, isVisible: false });
+  const [gridGuidesConfig, setGridGuidesConfig] = useState({ cols: 3, rows: 3, isVisible: false, gutterSize: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const isPanningRef = useRef(isPanning);
   isPanningRef.current = isPanning;
@@ -156,18 +156,47 @@ export const useDesignState = () => {
       return [];
     }
     const lines: Guide[] = [];
-    const { cols, rows } = gridGuidesConfig;
+    const { cols, rows, gutterSize } = gridGuidesConfig;
     const { width, height } = artboardSize;
 
-    // Vertical lines
-    for (let i = 1; i < cols; i++) {
-      const x = (width / cols) * i;
-      lines.push({ x1: x, y1: 0, x2: x, y2: height, type: 'grid' });
+    // Ensure gutter isn't larger than half the artboard dimensions
+    const safeGutter = Math.max(0, gutterSize);
+    const effectiveWidth = width - (safeGutter * 2);
+    const effectiveHeight = height - (safeGutter * 2);
+
+    if (effectiveWidth <= 0 || effectiveHeight <= 0) return [];
+    
+    // Add grid border lines
+    const topY = safeGutter;
+    const bottomY = height - safeGutter;
+    const leftX = safeGutter;
+    const rightX = width - safeGutter;
+
+    // Top border
+    lines.push({ x1: leftX, y1: topY, x2: rightX, y2: topY, type: 'grid' });
+    // Bottom border
+    lines.push({ x1: leftX, y1: bottomY, x2: rightX, y2: bottomY, type: 'grid' });
+    // Left border
+    lines.push({ x1: leftX, y1: topY, x2: leftX, y2: bottomY, type: 'grid' });
+    // Right border
+    lines.push({ x1: rightX, y1: topY, x2: rightX, y2: bottomY, type: 'grid' });
+
+    // Vertical lines for columns
+    if (cols > 1) {
+      const colWidth = effectiveWidth / cols;
+      for (let i = 1; i < cols; i++) {
+        const x = safeGutter + colWidth * i;
+        lines.push({ x1: x, y1: safeGutter, x2: x, y2: height - safeGutter, type: 'grid' });
+      }
     }
-    // Horizontal lines
-    for (let i = 1; i < rows; i++) {
-      const y = (height / rows) * i;
-      lines.push({ x1: 0, y1: y, x2: width, y2: y, type: 'grid' });
+
+    // Horizontal lines for rows
+    if (rows > 1) {
+      const rowHeight = effectiveHeight / rows;
+      for (let i = 1; i < rows; i++) {
+        const y = safeGutter + rowHeight * i;
+        lines.push({ x1: safeGutter, y1: y, x2: width - safeGutter, y2: y, type: 'grid' });
+      }
     }
     return lines;
   }, [gridGuidesConfig, artboardSize]);
