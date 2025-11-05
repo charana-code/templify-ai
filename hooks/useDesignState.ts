@@ -1037,6 +1037,23 @@ export const useDesignState = () => {
         const isInputFocused = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
         if (isInputFocused) return;
 
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+          e.preventDefault();
+          let allSelectableIds: string[];
+          if (editingGroupId) {
+            const group = elements.find(el => el.id === editingGroupId && el.type === 'group') as GroupElement | undefined;
+            if (group) {
+              allSelectableIds = group.elements.filter(el => !el.locked).map(el => el.id);
+            } else {
+              allSelectableIds = [];
+            }
+          } else {
+            allSelectableIds = elements.filter(el => !el.locked).map(el => el.id);
+          }
+          setSelectedElementIds(allSelectableIds);
+          return;
+        }
+
         if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
         if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); redo(); }
         if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); handleDeleteElement(); }
@@ -1049,7 +1066,10 @@ export const useDesignState = () => {
       };
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, handleCopy, handlePaste, handleDuplicate]);
+    }, [
+        undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, 
+        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId
+    ]);
 
     const withErrorHandling = <T extends any[]>(fn: (...args: T) => Promise<void>) => {
         return async (...args: T) => {
