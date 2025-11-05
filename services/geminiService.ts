@@ -144,8 +144,8 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
   const prompt = `You are a design assistant that translates natural language commands into JSON style updates for a design element.
   Below is the JSON representation of the currently selected design element. Based on the user's command, generate a JSON object with the properties that need to be updated.
   - Only return changed properties.
-  - For colors, use hex codes (e.g., '#FF0000').
-  - For 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', use a number.
+  - For colors (including shadowColor), use hex codes (e.g., '#FF0000') or rgba values (e.g., 'rgba(0,0,0,0.5)').
+  - For 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', 'borderRadius', 'shadowOffsetX', 'shadowOffsetY', 'shadowBlur', use a number.
   - For 'fontWeight', use 'normal' or 'bold'.
   - For 'fontStyle', use 'normal' or 'italic'.
   - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
@@ -173,7 +173,12 @@ export const applyStylesWithAI = async (element: CanvasElement, command: string)
     width: { type: Type.NUMBER, description: "Width in pixels" },
     height: { type: Type.NUMBER, description: "Height in pixels" },
     rotation: { type: Type.NUMBER, description: "Rotation in degrees" },
-    content: { type: Type.STRING, description: "The text content of the element" }
+    borderRadius: { type: Type.NUMBER, description: "Border radius in pixels" },
+    content: { type: Type.STRING, description: "The text content of the element" },
+    shadowOffsetX: { type: Type.NUMBER, description: "Shadow X offset in pixels" },
+    shadowOffsetY: { type: Type.NUMBER, description: "Shadow Y offset in pixels" },
+    shadowBlur: { type: Type.NUMBER, description: "Shadow blur radius in pixels" },
+    shadowColor: { type: Type.STRING, description: "Shadow color as hex or rgba" },
   };
 
   try {
@@ -204,8 +209,8 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
 
   - Only return changed properties.
   - For alignment/distribution, calculate new coordinates. For example, for "align left", all elements should get the same 'x' coordinate of the leftmost element.
-  - For colors, use hex codes (e.g., '#FF0000').
-  - For numerical values like 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', use a number.
+  - For colors (including shadowColor), use hex codes (e.g., '#FF0000') or rgba values.
+  - For numerical values like 'fontSize', 'width', 'height', 'rotation', 'lineHeight', 'letterSpacing', 'borderRadius', 'shadowOffsetX', 'shadowOffsetY', 'shadowBlur', use a number.
   - For 'fontWeight', use 'normal' or 'bold'.
   - For 'fontStyle', use 'normal' or 'italic'.
   - For 'textTransform', use 'none', 'uppercase', or 'lowercase'.
@@ -236,7 +241,12 @@ export const applyBulkStylesWithAI = async (elements: CanvasElement[], command: 
     textTransform: { type: Type.STRING, description: "'none', 'uppercase', or 'lowercase'" },
     underline: { type: Type.BOOLEAN, description: "Whether the text is underlined." },
     strikethrough: { type: Type.BOOLEAN, description: "Whether the text has a strikethrough." },
-    content: { type: Type.STRING, description: "The text content of the element" }
+    borderRadius: { type: Type.NUMBER, description: "Border radius in pixels" },
+    content: { type: Type.STRING, description: "The text content of the element" },
+    shadowOffsetX: { type: Type.NUMBER, description: "Shadow X offset in pixels" },
+    shadowOffsetY: { type: Type.NUMBER, description: "Shadow Y offset in pixels" },
+    shadowBlur: { type: Type.NUMBER, description: "Shadow blur radius in pixels" },
+    shadowColor: { type: Type.STRING, description: "Shadow color as hex or rgba" },
   };
 
   try {

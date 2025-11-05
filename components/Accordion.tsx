@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 
 interface AccordionProps {
   title: string;
@@ -8,7 +8,6 @@ interface AccordionProps {
 
 const Accordion: React.FC<AccordionProps> = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="border-b border-gray-700 bg-gray-900">
@@ -29,14 +28,15 @@ const Accordion: React.FC<AccordionProps> = ({ title, children, defaultOpen = fa
         </svg>
       </button>
       <div
-        ref={contentRef}
-        className="overflow-hidden transition-all duration-300 ease-in-out"
+        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
         style={{
-          maxHeight: isOpen ? `${contentRef.current?.scrollHeight}px` : '0px',
+          gridTemplateRows: isOpen ? '1fr' : '0fr',
         }}
       >
-        <div className="p-3 border-t border-gray-700">
-          {children}
+        <div className="overflow-hidden">
+            <div className="p-3 border-t border-gray-700">
+              {children}
+            </div>
         </div>
       </div>
     </div>

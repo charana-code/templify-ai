@@ -139,7 +139,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     boxSizing: 'border-box',
     zIndex: isDragging ? 9999 : (isSelected ? totalElements : zIndex),
     opacity: element.opacity ?? 1,
+    borderRadius: `${element.borderRadius || 0}px`,
+    overflow: 'hidden',
   };
+
+  if (element.shadowOffsetX || element.shadowOffsetY || element.shadowBlur) {
+    styles.filter = `drop-shadow(${element.shadowOffsetX || 0}px ${element.shadowOffsetY || 0}px ${element.shadowBlur || 0}px ${element.shadowColor || 'rgba(0,0,0,0.5)'})`;
+  }
 
   if (isSelected && !isEditing) {
     styles.outline = '2px solid #3b82f6';
@@ -311,7 +317,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
               {(() => {
                 switch (shapeEl.shapeType) {
                   case 'rectangle':
-                    return <rect x={svgProps.strokeWidth / 2} y={svgProps.strokeWidth / 2} width={shapeEl.width - svgProps.strokeWidth} height={shapeEl.height - svgProps.strokeWidth} {...svgProps} />;
+                    return <rect x={svgProps.strokeWidth / 2} y={svgProps.strokeWidth / 2} width={shapeEl.width - svgProps.strokeWidth} height={shapeEl.height - svgProps.strokeWidth} rx={shapeEl.borderRadius} ry={shapeEl.borderRadius} {...svgProps} />;
                   case 'ellipse':
                     return <ellipse cx={shapeEl.width / 2} cy={shapeEl.height / 2} rx={(shapeEl.width - svgProps.strokeWidth) / 2} ry={(shapeEl.height - svgProps.strokeWidth) / 2} {...svgProps} />;
                   case 'triangle':

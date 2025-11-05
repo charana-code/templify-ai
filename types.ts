@@ -11,6 +11,11 @@ export interface BaseElement {
   rotation: number;
   locked?: boolean;
   opacity?: number;
+  borderRadius?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowBlur?: number;
+  shadowColor?: string;
 }
 
 export interface TextElement extends BaseElement {

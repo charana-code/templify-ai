@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { CanvasElement, TextElement, ImageElement, ShapeElement, ElementType } from '../types';
+import Accordion from './Accordion';
 
 const NumberInput: React.FC<{
   label: string;
@@ -78,6 +79,7 @@ interface PropertiesPanelProps {
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, elements, onUpdateElements }) => {
   const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (selectedElements.length === 0) {
     return null;
@@ -99,6 +101,20 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
 
   const handleUpdate = (updates: Partial<CanvasElement>) => {
     onUpdateElements(updates);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          handleUpdate({ src: reader.result as string });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    if (e.target) e.target.value = '';
   };
 
   const renderTextProperties = (element: Partial<TextElement>) => (
@@ -151,10 +167,19 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
   );
 
   const renderImageProperties = (element: Partial<ImageElement>) => (
-    <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => handleUpdate({ flipHorizontal: !element.flipHorizontal })} className="p-2 bg-gray-700 rounded">Flip H</button>
-        <button onClick={() => handleUpdate({ flipVertical: !element.flipVertical })} className="p-2 bg-gray-700 rounded">Flip V</button>
-    </div>
+    <>
+      <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+      <button 
+        onClick={() => fileInputRef.current?.click()}
+        className="w-full p-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors text-sm"
+      >
+        Replace Image
+      </button>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+          <button onClick={() => handleUpdate({ flipHorizontal: !element.flipHorizontal })} className="p-2 bg-gray-700 rounded text-sm hover:bg-gray-600">Flip Horizontal</button>
+          <button onClick={() => handleUpdate({ flipVertical: !element.flipVertical })} className="p-2 bg-gray-700 rounded text-sm hover:bg-gray-600">Flip Vertical</button>
+      </div>
+    </>
   );
   
   const renderShapeProperties = (element: Partial<ShapeElement>) => (
@@ -176,15 +201,27 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElementIds, e
             <NumberInput label="W" value={commonProps.width} onChange={v => handleUpdate({ width: v })} />
             <NumberInput label="H" value={commonProps.height} onChange={v => handleUpdate({ height: v })} />
             <NumberInput label="Rotation" value={commonProps.rotation} onChange={v => handleUpdate({ rotation: v })} suffix="°" />
+            <NumberInput label="Radius" value={commonProps.borderRadius} onChange={v => handleUpdate({ borderRadius: v })} suffix="px" />
         </div>
 
         {commonType && (
-            <div className="border-t border-gray-700 pt-3 mt-3 space-y-3">
+            <div className="border-t border-gray-700 pt-3 space-y-3">
                 {commonType === 'text' && renderTextProperties(commonProps as Partial<TextElement>)}
                 {commonType === 'image' && renderImageProperties(commonProps as Partial<ImageElement>)}
                 {commonType === 'shape' && renderShapeProperties(commonProps as Partial<ShapeElement>)}
             </div>
         )}
+
+        <div className="border-t border-gray-700">
+            <Accordion title="Shadow">
+                <div className="space-y-3 pt-2">
+                    <NumberInput label="Offset X" value={commonProps.shadowOffsetX ?? 0} onChange={v => handleUpdate({ shadowOffsetX: v })} suffix="px" />
+                    <NumberInput label="Offset Y" value={commonProps.shadowOffsetY ?? 0} onChange={v => handleUpdate({ shadowOffsetY: v })} suffix="px" />
+                    <NumberInput label="Blur" value={commonProps.shadowBlur ?? 0} onChange={v => handleUpdate({ shadowBlur: v })} suffix="px" />
+                    <ColorInput label="Color" value={commonProps.shadowColor ?? 'rgba(0,0,0,0.5)'} onChange={v => handleUpdate({ shadowColor: v })} />
+                </div>
+            </Accordion>
+        </div>
     </div>
   );
 };
