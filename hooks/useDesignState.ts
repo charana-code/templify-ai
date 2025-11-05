@@ -117,6 +117,11 @@ export const useDesignState = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [canPaste, setCanPaste] = useState(false);
   const [gridGuidesConfig, setGridGuidesConfig] = useState({ cols: 3, rows: 3, isVisible: false });
+  const [isPanning, setIsPanning] = useState(false);
+  const isPanningRef = useRef(isPanning);
+  isPanningRef.current = isPanning;
+  const panInfoRef = useRef({ isDragging: false });
+
 
   const clipboardRef = useRef<(Omit<TextElement, 'id'> | Omit<ImageElement, 'id'> | Omit<ShapeElement, 'id'> | Omit<GroupElement, 'id'>)[]>([]);
 
@@ -859,6 +864,50 @@ export const useDesignState = () => {
   }, [elements, elementsOnCanvas, zoom, handleDocumentMouseMoveForRotation, handleDocumentMouseUpForRotation]);
 
     const handleMouseDownOnContainer = (e: React.MouseEvent) => {
+        if (isPanning) {
+            e.preventDefault();
+            e.stopPropagation();
+    
+            const container = editorContainerRef.current;
+            if (!container) return;
+    
+            panInfoRef.current.isDragging = true;
+            
+            const panStart = {
+                startX: e.clientX,
+                startY: e.clientY,
+                scrollLeft: container.scrollLeft,
+                scrollTop: container.scrollTop,
+            };
+            
+            container.style.cursor = 'grabbing';
+    
+            const handlePanMove = (moveE: MouseEvent) => {
+                const dx = moveE.clientX - panStart.startX;
+                const dy = moveE.clientY - panStart.startY;
+                container.scrollLeft = panStart.scrollLeft - dx;
+                container.scrollTop = panStart.scrollTop - dy;
+            };
+    
+            const handlePanUp = () => {
+                panInfoRef.current.isDragging = false;
+                if (container) {
+                    if (isPanningRef.current) {
+                        container.style.cursor = 'grab';
+                    } else {
+                        container.style.cursor = '';
+                    }
+                }
+                document.removeEventListener('mousemove', handlePanMove);
+                document.removeEventListener('mouseup', handlePanUp);
+            };
+    
+            document.addEventListener('mousemove', handlePanMove);
+            document.addEventListener('mouseup', handlePanUp);
+    
+            return;
+        }
+        
         const container = e.currentTarget as HTMLElement;
         if (editingGroupId) {
             const editorRect = editorRef.current?.getBoundingClientRect();
@@ -1145,6 +1194,13 @@ export const useDesignState = () => {
       const handleKeyDown = (e: KeyboardEvent) => {
         const activeEl = document.activeElement;
         const isInputFocused = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement;
+
+        if (e.code === 'Space' && !isInputFocused) {
+          e.preventDefault();
+          setIsPanning(true);
+          return;
+        }
+        
         if (isInputFocused) return;
 
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
@@ -1193,11 +1249,26 @@ export const useDesignState = () => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'v') { e.preventDefault(); handlePaste(); }
         if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); handleDuplicate(); }
       };
+
+      const handleKeyUp = (e: KeyboardEvent) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            setIsPanning(false);
+            if (!panInfoRef.current.isDragging && editorContainerRef.current) {
+                editorContainerRef.current.style.cursor = '';
+            }
+        }
+      };
+
       document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
+      document.addEventListener('keyup', handleKeyUp);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+      };
     }, [
         undo, redo, handleDeleteElement, handleGroup, handleUngroup, handleSaveDesign, 
-        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId, fitToScreen, handleSetZoom
+        handleCopy, handlePaste, handleDuplicate, elements, editingGroupId, fitToScreen, handleSetZoom, setIsPanning
     ]);
 
     const withErrorHandling = <T extends any[]>(fn: (...args: T) => Promise<void>) => {
@@ -1339,6 +1410,7 @@ export const useDesignState = () => {
     reorderability,
     gridGuidesConfig,
     gridLines,
+    isPanning,
     mainContainerRef,
     editorContainerRef,
     editorRef,

@@ -45,6 +45,7 @@ const App: React.FC = () => {
     reorderability,
     gridGuidesConfig,
     gridLines,
+    isPanning,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -184,7 +185,11 @@ const App: React.FC = () => {
             </button>
         </div>
         <main ref={mainContainerRef} className="flex-1 flex flex-col relative bg-gray-800">
-          <div ref={editorContainerRef} onMouseDown={handleMouseDownOnContainer} className="flex-1 w-full h-full overflow-auto">
+          <div
+            ref={editorContainerRef}
+            onMouseDown={handleMouseDownOnContainer}
+            className={`flex-1 w-full h-full overflow-auto ${isPanning ? 'cursor-grab' : ''}`}
+          >
             <div className="min-h-full min-w-full p-4 flex justify-center items-center">
               <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center center', transition: 'transform 0.2s ease-in-out' }}>
                 <Editor
