@@ -59,6 +59,7 @@ const App: React.FC = () => {
     setActiveTool,
     handleAddElement,
     handleAddTemplate,
+    handleAddNewLayer,
     handleElementMouseDown,
     handleUpdateElement,
     handleResizeStart,
@@ -292,11 +293,11 @@ const App: React.FC = () => {
                 editingGroupId={editingGroup?.id ?? null}
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}
-                // FIX: Pass the correct handler functions from the useDesignState hook.
                 onGroup={handleGroup}
                 onUngroup={handleUngroup}
                 canUngroup={canUngroup}
                 onToggleLock={(ids) => handleToggleLock(ids)}
+                onAddNewLayer={handleAddNewLayer}
                 onUpdateElements={handleUpdateSelectedElements}
               />
             </Accordion>

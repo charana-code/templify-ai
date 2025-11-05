@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CanvasElement, GroupElement, TextElement } from '../types';
+import NewLayerModal from './NewLayerModal';
 
 interface LayerItemProps {
   element: CanvasElement;
@@ -155,6 +156,7 @@ interface LayerPanelProps {
   onUngroup: () => void;
   canUngroup: boolean;
   onToggleLock: (ids: string[]) => void;
+  onAddNewLayer: (color: string) => void;
   onUpdateElements: (updates: Partial<CanvasElement>) => void;
 }
 
@@ -170,10 +172,12 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   onUngroup,
   canUngroup,
   onToggleLock,
+  onAddNewLayer,
   onUpdateElements,
 }) => {
     
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
+  const [isNewLayerModalOpen, setIsNewLayerModalOpen] = useState(false);
 
   useEffect(() => {
     // Sync the anchor point with external selection changes (e.g., from the canvas)
@@ -257,81 +261,100 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   }, [selectedElementIds, elements]);
 
   return (
-    <div className="w-full text-white flex flex-col">
-        <div className="shrink-0 p-2 border-b border-gray-700 flex items-center space-x-4">
-             <button
-                onClick={() => onToggleLock(selectedElementIds)}
-                disabled={selectedElementIds.length === 0}
-                className="p-2 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                title={isAnySelectedLocked ? 'Unlock Selected' : 'Lock Selected'}
-            >
-                {isAnySelectedLocked ? '🔒' : '🔓'}
-            </button>
-            <div className="flex-grow flex items-center space-x-2">
-                <label htmlFor="opacity-slider" className="text-sm text-gray-400">Opacity</label>
-                <input
-                    id="opacity-slider"
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={commonOpacity}
-                    onChange={(e) => onUpdateElements({ opacity: parseInt(e.target.value, 10) / 100 })}
-                    disabled={selectedElementIds.length === 0}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
-                />
-                <span className="text-sm w-10 text-right">{commonOpacity}%</span>
-            </div>
-        </div>
-        <div className="overflow-y-auto space-y-1 p-2 max-h-96">
-            {visibleElements.map(element => (
-                <LayerItem
-                    key={element.id}
-                    element={element}
-                    level={0}
-                    selectedElementIds={selectedElementIds}
-                    onSelect={handleSelect}
-                    onReorder={onReorder}
-                    onSetEditingGroupId={onSetEditingGroupId}
-                />
-            ))}
-        </div>
-        <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
-            {editingGroupId && (
-                <button
-                    onClick={() => onSetEditingGroupId(null)}
-                    className="w-full p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm"
-                >
-                    Exit Group
-                </button>
-            )}
-             <div className="flex items-center justify-around">
-                <button
-                    onClick={onGroup}
-                    disabled={isEditing || selectedElementIds.length < 2 || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Group Layers (Ctrl+G)"
-                >
-                    <span role="img" aria-label="Group">📁+</span>
-                </button>
-                <button
-                    onClick={onUngroup}
-                    disabled={isEditing || !canUngroup || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Ungroup Layers (Ctrl+Shift+G)"
-                >
-                    <span role="img" aria-label="Ungroup">📁-</span>
-                </button>
-                <button
-                    onClick={onDelete}
-                    disabled={selectedElementIds.length === 0 || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Delete Layer (Delete)"
-                >
-                    <span role="img" aria-label="Delete">🗑️</span>
-                </button>
-            </div>
-        </div>
-    </div>
+    <>
+      <div className="w-full text-white flex flex-col">
+          <div className="shrink-0 p-2 border-b border-gray-700 flex items-center space-x-4">
+              <button
+                  onClick={() => onToggleLock(selectedElementIds)}
+                  disabled={selectedElementIds.length === 0}
+                  className="p-2 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                  title={isAnySelectedLocked ? 'Unlock Selected' : 'Lock Selected'}
+              >
+                  {isAnySelectedLocked ? '🔒' : '🔓'}
+              </button>
+              <div className="flex-grow flex items-center space-x-2">
+                  <label htmlFor="opacity-slider" className="text-sm text-gray-400">Opacity</label>
+                  <input
+                      id="opacity-slider"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={commonOpacity}
+                      onChange={(e) => onUpdateElements({ opacity: parseInt(e.target.value, 10) / 100 })}
+                      disabled={selectedElementIds.length === 0}
+                      className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed"
+                  />
+                  <span className="text-sm w-10 text-right">{commonOpacity}%</span>
+              </div>
+          </div>
+          <div className="overflow-y-auto space-y-1 p-2 max-h-96">
+              {visibleElements.map(element => (
+                  <LayerItem
+                      key={element.id}
+                      element={element}
+                      level={0}
+                      selectedElementIds={selectedElementIds}
+                      onSelect={handleSelect}
+                      onReorder={onReorder}
+                      onSetEditingGroupId={onSetEditingGroupId}
+                  />
+              ))}
+          </div>
+          <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
+              {editingGroupId && (
+                  <button
+                      onClick={() => onSetEditingGroupId(null)}
+                      className="w-full p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm"
+                  >
+                      Exit Group
+                  </button>
+              )}
+              <div className="flex items-center justify-around">
+                  <button
+                      onClick={() => setIsNewLayerModalOpen(true)}
+                      disabled={isEditing}
+                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                      title="Add New Layer"
+                  >
+                      <span role="img" aria-label="Add Layer">📄+</span>
+                  </button>
+                  <button
+                      onClick={onGroup}
+                      disabled={isEditing || selectedElementIds.length < 2 || isAnySelectedLocked}
+                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                      title="Group Layers (Ctrl+G)"
+                  >
+                      <span role="img" aria-label="Group">📁+</span>
+                  </button>
+                  <button
+                      onClick={onUngroup}
+                      disabled={isEditing || !canUngroup || isAnySelectedLocked}
+                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                      title="Ungroup Layers (Ctrl+Shift+G)"
+                  >
+                      <span role="img" aria-label="Ungroup">📁-</span>
+                  </button>
+                  <button
+                      onClick={onDelete}
+                      disabled={selectedElementIds.length === 0 || isAnySelectedLocked}
+                      className="px-3 py-1.5 rounded text-sm disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
+                      title="Delete Layer (Delete)"
+                  >
+                      <span role="img" aria-label="Delete">🗑️</span>
+                  </button>
+              </div>
+          </div>
+      </div>
+      {isNewLayerModalOpen && (
+        <NewLayerModal
+          onClose={() => setIsNewLayerModalOpen(false)}
+          onCreate={(color) => {
+            onAddNewLayer(color);
+            setIsNewLayerModalOpen(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 

@@ -453,6 +453,28 @@ export const useDesignState = () => {
     }
 }, [setElements, zoom]);
 
+  const handleAddNewLayer = useCallback((backgroundColor: string) => {
+    if (!artboardSize) return;
+
+    const newLayer: ShapeElement = {
+      id: `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'shape',
+      shapeType: 'rectangle',
+      x: 0,
+      y: 0,
+      width: artboardSize.width,
+      height: artboardSize.height,
+      rotation: 0,
+      fill: backgroundColor,
+      stroke: 'transparent',
+      strokeWidth: 0,
+      locked: false,
+    };
+    
+    // Add to the bottom of the stack (beginning of the array)
+    setElements(prev => [newLayer, ...prev]);
+  }, [artboardSize, setElements]);
+
 
   const handleUpdateElement = useCallback((id: string, updates: Partial<CanvasElement>) => {
     const updater = makeElementUpdater(id, updates, activeGroup);
@@ -1446,6 +1468,7 @@ export const useDesignState = () => {
     setActiveTool,
     handleAddElement,
     handleAddTemplate,
+    handleAddNewLayer,
     handleElementMouseDown,
     handleUpdateElement,
     handleResizeStart,
