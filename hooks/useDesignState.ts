@@ -973,20 +973,30 @@ export const useDesignState = () => {
         if (selectedElementIds.length === 0) return;
         const elementsToCopy = elementsOnCanvas
           .filter(el => selectedElementIds.includes(el.id))
+          // FIX: Correctly handle discriminated unions when removing the `id`.
+          // The grouped switch case was causing issues with type inference. Separating the cases
+          // ensures that TypeScript correctly infers the specific type for `rest`.
           .map(el => {
-            // FIX: Correctly handle discriminated unions when removing the `id`.
-            // Using a switch ensures that `rest` has a proper, non-ambiguous type.
             switch (el.type) {
-              case 'text':
-              case 'image':
-              case 'shape':
+              case 'text': {
+                const { id, ...rest } = el;
+                return rest;
+              }
+              case 'image': {
+                const { id, ...rest } = el;
+                return rest;
+              }
+              case 'shape': {
+                const { id, ...rest } = el;
+                return rest;
+              }
               case 'group': {
                 const { id, ...rest } = el;
                 return rest;
               }
             }
           });
-        clipboardRef.current = elementsToCopy;
+        clipboardRef.current = elementsToCopy.filter((el): el is Omit<CanvasElement, 'id'> => !!el);
       }
       
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
@@ -1031,24 +1041,31 @@ export const useDesignState = () => {
 
         const elementsToDuplicate = selectedElementIds.map(id => elementsMap.get(id)).filter((el): el is CanvasElement => !!el);
 
-        // FIX: Refactored duplication to correctly handle discriminated unions.
-        // The original code used an unsafe cast `...(el as any)`.
-        // This `switch` statement correctly narrows the type of `el` before spreading,
-        // ensuring type safety and preventing compilation errors.
-        const newElements = elementsToDuplicate.map(el => {
+        // FIX: Refactored duplication to correctly handle discriminated unions by using separate cases.
+        // This ensures the returned object is correctly typed as a member of the CanvasElement union.
+        const newElements = elementsToDuplicate.map((el): CanvasElement | undefined => {
           const newPosition = { x: el.x + 20, y: el.y + 20 };
           const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           
           switch(el.type) {
-            case 'text':
-            case 'image':
-            case 'shape':
+            case 'text': {
+              const { id, ...rest } = el;
+              return { ...rest, ...newPosition, id: newId };
+            }
+            case 'image': {
+              const { id, ...rest } = el;
+              return { ...rest, ...newPosition, id: newId };
+            }
+            case 'shape': {
+              const { id, ...rest } = el;
+              return { ...rest, ...newPosition, id: newId };
+            }
             case 'group': {
               const { id, ...rest } = el;
               return { ...rest, ...newPosition, id: newId };
             }
           }
-        });
+        }).filter((el): el is CanvasElement => !!el);
 
         setElements(prev => [...prev, ...newElements]);
         setSelectedElementIds(newElements.map(el => el.id));
@@ -1140,7 +1157,7 @@ export const useDesignState = () => {
     draggingElementId,
     guides,
     zoom,
-    editingGroup,
+    editingGroup: activeGroup,
     activeGroup,
     isDirty,
     canUndo,
