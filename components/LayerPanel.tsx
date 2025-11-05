@@ -148,7 +148,6 @@ interface LayerPanelProps {
   selectedElementIds: string[];
   onSelectElements: (ids: string[], mode: 'set' | 'add') => void;
   onReorder: (draggedId: string, targetId: string, position: 'before' | 'after') => void;
-  onReorderSelection: (direction: 'forward' | 'backward' | 'front' | 'back') => void;
   editingGroupId: string | null;
   onSetEditingGroupId: (id: string | null) => void;
   onDelete: () => void;
@@ -164,7 +163,6 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
   selectedElementIds,
   onSelectElements,
   onReorder,
-  onReorderSelection,
   editingGroupId,
   onSetEditingGroupId,
   onDelete,
@@ -258,35 +256,6 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
     };
   }, [selectedElementIds, elements]);
 
-
-  const { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack } = useMemo(() => {
-    if (selectedElementIds.length === 0 || editingGroupId) {
-        return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
-    }
-
-    const totalElements = elements.length;
-    
-    const isSingleSelection = selectedElementIds.length === 1;
-    const singleSelectedId = isSingleSelection ? selectedElementIds[0] : null;
-    const elementIndex = singleSelectedId ? elements.findIndex(el => el.id === singleSelectedId) : -1;
-
-    const indices = selectedElementIds.map(id => elements.findIndex(el => el.id === id)).filter(i => i !== -1);
-    if(indices.length === 0) {
-          return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
-    }
-
-    const topMostIndex = Math.max(...indices);
-    const bottomMostIndex = Math.min(...indices);
-
-    const canMoveForward = isSingleSelection && elementIndex > -1 && elementIndex < totalElements - 1;
-    const canMoveBackward = isSingleSelection && elementIndex > 0;
-    const canMoveToFront = topMostIndex < totalElements - 1;
-    const canMoveToBack = bottomMostIndex > 0;
-
-    return { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack };
-  }, [selectedElementIds, elements, editingGroupId]);
-
-
   return (
     <div className="w-full text-white flex flex-col h-full">
         <div className="shrink-0 p-2 border-b border-gray-700 flex items-center space-x-4">
@@ -335,32 +304,6 @@ const LayerPanel: React.FC<LayerPanelProps> = ({
             </button>
         )}
         <div className="shrink-0 p-2 border-t border-gray-700 flex flex-col space-y-2">
-            <div className="flex items-center justify-around">
-                <button
-                    onClick={() => onReorderSelection('backward')}
-                    disabled={!canMoveBackward || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Send Backward"
-                >↓</button>
-                <button
-                    onClick={() => onReorderSelection('forward')}
-                    disabled={!canMoveForward || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Bring Forward"
-                >↑</button>
-                <button
-                    onClick={() => onReorderSelection('back')}
-                    disabled={!canMoveToBack || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Send to Back"
-                >⇊</button>
-                <button
-                    onClick={() => onReorderSelection('front')}
-                    disabled={!canMoveToFront || isAnySelectedLocked}
-                    className="px-3 py-1.5 rounded text-lg disabled:text-gray-600 disabled:cursor-not-allowed hover:bg-gray-700"
-                    title="Bring to Front"
-                >⇈</button>
-            </div>
              <div className="flex items-center justify-around">
                 <button
                     onClick={onGroup}

@@ -42,6 +42,7 @@ const App: React.FC = () => {
     canCopy,
     canPaste,
     canDelete,
+    reorderability,
     gridGuidesConfig,
     gridLines,
     mainContainerRef,
@@ -114,6 +115,8 @@ const App: React.FC = () => {
             <ContextualToolbar
               selectedElementIds={selectedElementIds}
               onAlignOrDistribute={handleAlignOrDistribute}
+              onReorderElement={handleReorderElement}
+              reorderability={reorderability}
             />
           )}
         </div>
@@ -258,7 +261,6 @@ const App: React.FC = () => {
                 selectedElementIds={selectedElementIds}
                 onSelectElements={handleSelectElements}
                 onReorder={handleReorderForLayers}
-                onReorderSelection={(direction) => handleReorderElement(selectedElementIds, direction)}
                 editingGroupId={editingGroup?.id ?? null}
                 onSetEditingGroupId={setEditingGroupId}
                 onDelete={handleDeleteElement}

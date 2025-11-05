@@ -14,7 +14,7 @@ const Accordion: React.FC<AccordionProps> = ({ title, children, defaultOpen = fa
     <div className="border-b border-gray-700 bg-gray-900">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center p-3 text-left text-lg font-bold text-gray-300 hover:bg-gray-800 transition-colors"
+        className="w-full flex justify-between items-center p-3 text-left text-lg font-bold text-gray-300 hover:bg-gray-800 transition-colors sticky top-0 z-10 bg-gray-900"
         aria-expanded={isOpen}
       >
         <span>{title}</span>

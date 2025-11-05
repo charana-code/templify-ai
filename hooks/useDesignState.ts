@@ -441,10 +441,23 @@ export const useDesignState = () => {
           if (elementIds.length === 1) {
               const elementId = elementIds[0];
               const currentIndex = prev.findIndex(el => el.id === elementId);
-              const [element] = prev.filter(el => el.id === elementId);
+
+              // Element not found, return original array
+              if (currentIndex === -1) {
+                return prev;
+              }
+
+              const element = prev[currentIndex];
               const arr = prev.filter(el => el.id !== elementId);
-              if (direction === 'forward') arr.splice(Math.min(currentIndex, arr.length), 0, element);
-              else if (direction === 'backward') arr.splice(Math.max(currentIndex - 1, 0), 0, element);
+              
+              if (direction === 'forward') {
+                // To move forward, insert at the next index in the shortened array.
+                // This is safe because reorderability check ensures we are not at the end.
+                arr.splice(currentIndex + 1, 0, element);
+              } else if (direction === 'backward') {
+                // To move backward, insert at the previous index.
+                arr.splice(Math.max(currentIndex - 1, 0), 0, element);
+              }
               return arr;
           }
           return prev;
@@ -1186,6 +1199,30 @@ export const useDesignState = () => {
     const canCopy = useMemo(() => selectedElementIds.length > 0, [selectedElementIds]);
     const canDelete = useMemo(() => selectedElementIds.length > 0 && !isAnySelectedLocked, [selectedElementIds, isAnySelectedLocked]);
 
+    const reorderability = useMemo(() => {
+        if (selectedElementIds.length === 0 || editingGroupId) {
+            return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
+        }
+
+        const totalElements = elements.length;
+        const isSingleSelection = selectedElementIds.length === 1;
+        
+        const indices = selectedElementIds.map(id => elements.findIndex(el => el.id === id)).filter(i => i !== -1);
+        if(indices.length === 0) {
+            return { canMoveForward: false, canMoveBackward: false, canMoveToFront: false, canMoveToBack: false };
+        }
+
+        const topMostIndex = Math.max(...indices);
+        const bottomMostIndex = Math.min(...indices);
+
+        const canMoveForward = isSingleSelection && topMostIndex < totalElements - 1;
+        const canMoveBackward = isSingleSelection && bottomMostIndex > 0;
+        const canMoveToFront = topMostIndex < totalElements - 1;
+        const canMoveToBack = bottomMostIndex > 0;
+
+        return { canMoveForward, canMoveBackward, canMoveToFront, canMoveToBack };
+    }, [selectedElementIds, elements, editingGroupId]);
+
   return {
     artboardSize,
     handleArtboardSelect,
@@ -1213,6 +1250,7 @@ export const useDesignState = () => {
     canCopy,
     canPaste,
     canDelete,
+    reorderability,
     gridGuidesConfig,
     gridLines,
     mainContainerRef,
