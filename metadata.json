@@ -1,5 +1,5 @@
 {
-  "name": "Gemini Design Studio",
+  "name": "Templify AI",
   "description": "A Canva-like design tool powered by Gemini. Drag and drop elements onto a canvas, then use AI to automatically place content and apply design changes from natural language prompts.",
   "requestFramePermissions": []
 }

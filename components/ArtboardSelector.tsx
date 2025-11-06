@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { artboardCategories, ArtboardPreset } from '../data/artboard-presets';
 
 interface ArtboardSelectorProps {
-  onSelect: (width: number, height: number, backgroundColor: string) => void;
+  onSelect: (width: number, height: number, backgroundColor: string, projectName: string) => void;
 }
 
 type TabCategory = keyof typeof artboardCategories;
@@ -23,7 +23,7 @@ const ArtboardSelector: React.FC<ArtboardSelectorProps> = ({ onSelect }) => {
 
   const handleCreateCustom = () => {
     if (customWidth > 0 && customHeight > 0) {
-      onSelect(customWidth, customHeight, backgroundColor);
+      onSelect(customWidth, customHeight, backgroundColor, projectName);
     }
   };
 

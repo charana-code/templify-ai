@@ -59,7 +59,10 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
       });
     }, { root: listEl, rootMargin: '0px 0px 200px 0px' }); // Preload fonts 200px ahead
 
-    Array.from(listEl.children).forEach(child => observer.observe(child));
+    // FIX: Replaced Array.from().forEach() with a for...of loop to resolve a type inference issue.
+    for (const child of listEl.children) {
+      observer.observe(child);
+    }
     observerRef.current = observer;
 
     return () => observerRef.current?.disconnect();

@@ -706,10 +706,11 @@ const ExportPanel: React.FC<{
   editorRef: React.RefObject<HTMLDivElement>;
   artboardSize: { width: number; height: number };
   onSaveTemplate: (name: string) => void;
-}> = ({ editorRef, artboardSize, onSaveTemplate }) => {
+  projectName: string;
+}> = ({ editorRef, artboardSize, onSaveTemplate, projectName }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [mode, setMode] = useState<'export' | 'save_template'>('export');
-  const [templateName, setTemplateName] = useState('');
+  const [templateName, setTemplateName] = useState(projectName || '');
 
   const handleExport = async (format: 'png' | 'jpeg' | 'pdf') => {
     if (!editorRef.current || isExporting) return;
@@ -861,9 +862,10 @@ interface DetailsPanelProps {
   editorRef: React.RefObject<HTMLDivElement>;
   artboardSize: { width: number; height: number };
   onSaveTemplate: (name: string) => void;
+  projectName: string;
 }
 
-const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, customTemplates, editorRef, artboardSize, onSaveTemplate }) => {
+const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, customTemplates, editorRef, artboardSize, onSaveTemplate, projectName }) => {
   const [subView, setSubView] = useState<'main' | 'shapes' | 'icons' | 'frames' | 'graphics' | 'social'>('main');
 
   const renderContent = () => {
@@ -892,7 +894,7 @@ const DetailsPanel: React.FC<DetailsPanelProps> = ({ activeTool, onAddElement, c
       case 'templates':
         return <TemplatesPanel customTemplates={customTemplates} />;
       case 'export':
-        return <ExportPanel editorRef={editorRef} artboardSize={artboardSize} onSaveTemplate={onSaveTemplate} />;
+        return <ExportPanel editorRef={editorRef} artboardSize={artboardSize} onSaveTemplate={onSaveTemplate} projectName={projectName} />;
       default:
         return (
             <div className="p-4 text-center text-gray-500">

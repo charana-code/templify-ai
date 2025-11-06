@@ -15,6 +15,7 @@ const loadInitialState = () => {
           initialArtboardSize: savedDesign.artboardSize as { width: number; height: number },
           initialElements: savedDesign.elements as CanvasElement[],
           initialBackgroundColor: savedDesign.artboardBackgroundColor || '#FFFFFF',
+          initialProjectName: savedDesign.projectName || 'Untitled Design',
         };
       }
     }
@@ -22,10 +23,10 @@ const loadInitialState = () => {
     console.error("Failed to load saved design", e);
     localStorage.removeItem(SAVE_KEY);
   }
-  return { initialArtboardSize: null, initialElements: [] as CanvasElement[], initialBackgroundColor: '#FFFFFF' };
+  return { initialArtboardSize: null, initialElements: [] as CanvasElement[], initialBackgroundColor: '#FFFFFF', initialProjectName: 'Untitled Design' };
 };
 
-const { initialArtboardSize, initialElements, initialBackgroundColor } = loadInitialState();
+const { initialArtboardSize, initialElements, initialBackgroundColor, initialProjectName } = loadInitialState();
 
 
 const makeElementUpdater = (id: string, updates: Partial<CanvasElement>, groupContext: GroupElement | undefined | null) => {
@@ -100,6 +101,7 @@ export const useDesignState = () => {
 
   const [artboardSize, setArtboardSize] = useState<{ width: number, height: number } | null>(initialArtboardSize);
   const [artboardBackgroundColor, setArtboardBackgroundColor] = useState<string>(initialBackgroundColor);
+  const [projectName, setProjectName] = useState<string>(initialProjectName);
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +138,9 @@ export const useDesignState = () => {
   
   const artboardBackgroundColorRef = useRef(artboardBackgroundColor);
   artboardBackgroundColorRef.current = artboardBackgroundColor;
+  
+  const projectNameRef = useRef(projectName);
+  projectNameRef.current = projectName;
   
   const isDirtyRef = useRef(isDirty);
   isDirtyRef.current = isDirty;
@@ -206,6 +211,7 @@ export const useDesignState = () => {
 
     try {
       const designState = {
+        projectName: projectNameRef.current,
         artboardSize: artboardSizeRef.current,
         artboardBackgroundColor: artboardBackgroundColorRef.current,
         elements: elementsRef.current,
@@ -223,6 +229,7 @@ export const useDesignState = () => {
         
         try {
             const designState = {
+                projectName: projectNameRef.current,
                 artboardSize: artboardSizeRef.current,
                 artboardBackgroundColor: artboardBackgroundColorRef.current,
                 elements: elementsRef.current,
@@ -344,9 +351,10 @@ export const useDesignState = () => {
   }, [zoom]);
 
 
-  const handleArtboardSelect = (width: number, height: number, backgroundColor: string) => {
+  const handleArtboardSelect = (width: number, height: number, backgroundColor: string, name: string) => {
     setArtboardSize({ width, height });
     setArtboardBackgroundColor(backgroundColor);
+    setProjectName(name);
   };
 
   const handleAddElement = useCallback((element: Omit<CanvasElement, 'id'>) => {
@@ -1520,6 +1528,7 @@ export const useDesignState = () => {
         setArtboardSize(null);
         resetElementsHistory([]);
         setArtboardBackgroundColor('#FFFFFF');
+        setProjectName('Untitled Design');
         setSelectedElementIds([]);
         setEditingGroupId(null);
         localStorage.removeItem(SAVE_KEY);
@@ -1589,6 +1598,7 @@ export const useDesignState = () => {
     gridGuidesConfig,
     gridLines,
     isPanning,
+    projectName,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -1620,6 +1630,7 @@ export const useDesignState = () => {
     handleToggleLock,
     handleToggleVisibility,
     handleUpdateSelectedElements,
+    setProjectName,
 
     handleReorderElement,
     handleAlignOrDistribute,

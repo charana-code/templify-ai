@@ -47,6 +47,7 @@ const App: React.FC = () => {
     gridGuidesConfig,
     gridLines,
     isPanning,
+    projectName,
     mainContainerRef,
     editorContainerRef,
     editorRef,
@@ -88,6 +89,7 @@ const App: React.FC = () => {
     handleDuplicate,
     toggleSettingsModal,
     handleGridGuidesConfigChange,
+    setProjectName,
   } = useDesignState();
 
 
@@ -99,7 +101,16 @@ const App: React.FC = () => {
     <div className="h-screen w-screen flex flex-col bg-gray-800">
       <header className="bg-gray-900 text-white p-2 flex items-center justify-between shadow-md z-30 h-16">
         <div className="w-1/3 flex items-center pl-4 space-x-4">
-          <h1 className="text-xl font-bold">Gemini Design Studio</h1>
+          <h1 className="text-xl font-bold">Templify</h1>
+          <div className="h-6 w-px bg-gray-600"></div>
+           <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onBlur={() => handleSaveDesign()}
+              className="bg-transparent text-lg font-semibold focus:outline-none hover:bg-gray-700 focus:bg-gray-700 focus:ring-1 focus:ring-blue-500 rounded px-2 py-0.5 text-white w-64 transition-colors"
+              aria-label="Project Name"
+           />
           <MainMenu
             onNew={handleNewDesign}
             onSave={handleSaveDesign}
@@ -175,6 +186,7 @@ const App: React.FC = () => {
               editorRef={editorRef}
               artboardSize={artboardSize}
               onSaveTemplate={handleSaveTemplate}
+              projectName={projectName}
             />
         </div>
         <div className="relative w-px bg-gray-700 shrink-0">
@@ -230,6 +242,7 @@ const App: React.FC = () => {
                       onUpdateElement={handleUpdateElement}
                       onResizeStart={handleResizeStart}
                       onRotationStart={handleRotationStart}
+                      // FIX: The value for the onElementDoubleClick prop was incorrect. It should be `handleElementDoubleClick` from the useDesignState hook.
                       onElementDoubleClick={handleElementDoubleClick}
                     />
                   </div>
